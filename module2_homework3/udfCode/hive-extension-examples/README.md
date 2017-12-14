@@ -23,10 +23,15 @@ mvn assembly:single
 
 ```
 %> hive
-hive> ADD JAR /path/to/assembled.jar;
-hive> create temporary function hello as 'com.matthewrathbone.example.SimpleUDFExample';
-hive> select hello(firstname) from people limit 10;
+hive> ADD JAR /path/to/udfTest.jar;
+hive> create temporary function userAgentUDF as 'com.epam.hive.udf.example.SimpleUDFExample';
+hive> select userAgentUDF(UserAgent) from logs limit 10;
 
 ```
+
+
+
+
+
 
 [blog-post]:http://blog.matthewrathbone.com/2013/08/10/guide-to-writing-hive-udfs.html

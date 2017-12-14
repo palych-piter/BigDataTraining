@@ -1,4 +1,4 @@
-package com.matthewrathbone.example;
+package com.epam.hive.udf.example;
 
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;

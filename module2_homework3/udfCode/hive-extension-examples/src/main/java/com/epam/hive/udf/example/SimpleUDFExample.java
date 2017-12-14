@@ -1,9 +1,8 @@
-package com.matthewrathbone.example;
+package com.epam.hive.udf.example;
 
 import eu.bitwalker.useragentutils.UserAgent;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDF;
-import org.apache.hadoop.io.Text;
 
 import java.util.ArrayList;
 
@@ -15,18 +14,19 @@ import java.util.ArrayList;
 public class SimpleUDFExample extends UDF {
 
 
-  public ArrayList<String> evaluate(Text input) {
+  public ArrayList<String> evaluate(String input) {
     if(input == null) return null;
 
     ArrayList<String> userAgentArray = new ArrayList<String>();
 
-    UserAgent userAgent = UserAgent.parseUserAgentString(input.toString());
+    UserAgent userAgent = UserAgent.parseUserAgentString(input);
 
     userAgentArray.add(userAgent.getOperatingSystem().getDeviceType().toString());
     userAgentArray.add(userAgent.getBrowser().toString());
     userAgentArray.add(userAgent.getOperatingSystem().toString());
 
     return userAgentArray;
+
   }
 
 }

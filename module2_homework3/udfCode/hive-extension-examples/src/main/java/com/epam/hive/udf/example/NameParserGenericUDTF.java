@@ -1,4 +1,4 @@
-package com.matthewrathbone.example;
+package com.epam.hive.udf.example;
 
 import java.util.ArrayList;
 import java.util.Iterator;
