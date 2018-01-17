@@ -1,0 +1,102 @@
+group 'training.bigdata.epam'
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+version '1.0'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
+    }
+}
+
+
+sourceSets {
+    main {
+        java {
+            exclude 'src/main/resources/word-analyzer.properties'
+        }
+    }
+}
+
+//For building a single jar with all dependencies run "gradlew shadowJar"
+// Configure the shadow jar task
+shadowJar {
+    // exclude properties file from jar
+    exclude('word-analyzer.properties')
+    mergeServiceFiles()
+    //here we set a name format of jar file
+    archiveName = "mapreduce-${version}.${extension}"
+}
+
+
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+repositories {
+   mavenCentral()
+}
+
+
+dependencies {
+   compile 'ch.qos.logback:logback-classic:1.2.2'
+   compile 'javax.persistence:persistence-api:1.0.2'
+   compile('junit:junit:4.12'){
+        exclude group: 'org.hamcrest'
+   }
+   compile 'org.hamcrest:hamcrest-library:1.3'
+   compile group: 'org.apache.hadoop', name: 'hadoop-core', version: '1.2.1'
+}
+
+
+jar {
+
+   manifest {
+
+        attributes(
+           "Implementation-Title": "Gradle",
+           "Implementation-Version": version,
+           "Main-Class": "training.bigdata.epam.WordAnalyzer"
+       )
+    }
+
+   from {
+          configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+   }
+
+
+//filtering out test classes, only test suites should be run
+    test {
+        testLogging.showStandardStreams = true
+        testLogging.exceptionFormat = 'full'
+
+        //exclude certain classes to avoid double running - suites + test classes
+       // exclude '**/InitInputFilesImplTest.class'
+       // exclude '**/PopulateTablePostgresImplTest.class'
+       // exclude '**/PopulateCellsImplTest.class'
+
+    }
+
+    //the copyFiles task executes right after the shadowJar and copy
+    //the property and test files into the build folder
+    task copyFiles  {
+        doLast  {
+            copy {
+                from 'src/main/resources/word-analyzer.properties'
+                into 'build/libs/'
+            }
+        }
+    }
+
+    shadowJar.finalizedBy(copyFiles)
+
+}
+
+
+
+
+
