@@ -1,5 +1,0 @@
-Manifest-Version: 1.0
-Implementation-Title: Gradle
-Implementation-Version: 3.0
-Main-Class: training.bigdata.epam.WordAnzlyzer
-
