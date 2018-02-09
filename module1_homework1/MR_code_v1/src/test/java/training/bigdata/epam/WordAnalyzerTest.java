@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 
 public class WordAnalyzerTest {
-            MapDriver<Object, Text, Text, MapWritable> mapDriver;
+            org.apache.hadoop.mrunit.MapDriver<Object, Text, Text, MapWritable> mapDriver;
             ReduceDriver<Text, MapWritable, Text, IntWritable> reduceDriver;
             MapReduceDriver<Object, Text, Text, MapWritable, Text, IntWritable> mapReduceDriver;
 

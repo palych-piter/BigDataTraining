@@ -23,9 +23,9 @@ import static org.junit.Assert.assertEquals;
 
 
 public class WordAnalyzerTest {
-            MapDriver<Object, Text, Text, MapWritable> mapDriver;
-            ReduceDriver<Text, MapWritable, Text, IntWritable> reduceDriver;
-            MapReduceDriver<Object, Text, Text, MapWritable, Text, IntWritable> mapReduceDriver;
+            MapDriver<Object, Text, IntWritable, Text> mapDriver;
+            ReduceDriver<IntWritable, Text, IntWritable, Text> reduceDriver;
+            MapReduceDriver<Object, Text, IntWritable, Text, IntWritable, Text> mapReduceDriver;
 
 
         @Before
@@ -33,7 +33,7 @@ public class WordAnalyzerTest {
             WordAnalyzer.TokenizerMapper mapper = new WordAnalyzer.TokenizerMapper();
             WordAnalyzer.IntSumReducer reducer = new WordAnalyzer.IntSumReducer();
             mapDriver = MapDriver.newMapDriver(mapper);
-            reduceDriver = ReduceDriver.newReduceDriver(reducer);
+            reduceDriver = org.apache.hadoop.mrunit.ReduceDriver.newReduceDriver(reducer);
             mapReduceDriver = MapReduceDriver.newMapReduceDriver(mapper, reducer);
         }
 
