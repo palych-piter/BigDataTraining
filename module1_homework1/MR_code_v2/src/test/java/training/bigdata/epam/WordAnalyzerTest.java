@@ -1,6 +1,7 @@
 package training.bigdata.epam;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,55 +34,77 @@ public class WordAnalyzerTest {
             WordAnalyzer.TokenizerMapper mapper = new WordAnalyzer.TokenizerMapper();
             WordAnalyzer.IntSumReducer reducer = new WordAnalyzer.IntSumReducer();
             mapDriver = MapDriver.newMapDriver(mapper);
-            reduceDriver = org.apache.hadoop.mrunit.ReduceDriver.newReduceDriver(reducer);
+            reduceDriver = ReduceDriver.newReduceDriver(reducer);
             mapReduceDriver = MapReduceDriver.newMapReduceDriver(mapper, reducer);
         }
 
 
         @Test
         public void testMapper() throws IOException {
-            mapDriver.withInput(new Text("key"), new Text("12345"));
-            List<Pair<Text,MapWritable>> results = new ArrayList<Pair<Text,MapWritable>>();
-            results = mapDriver.run();
-            Map.Entry<Writable, Writable> entry = results.get(0).getSecond().entrySet().iterator().next();
+            mapDriver.withInput(new Text("key"), new Text("12345 1234 123 12 1 54321"));
 
-            assertEquals ("key",results.get(0).getFirst().toString());
-            assertEquals (new Text("12345"), (Text) entry.getKey());
-            assertEquals (new IntWritable(5), (IntWritable) entry.getValue());
+            List<Pair<IntWritable,Text>> results = new ArrayList<Pair<IntWritable,Text>>();
+            results = mapDriver.run();
+
+            assertEquals ("5",results.get(0).getFirst().toString());
+            assertEquals ("12345",results.get(0).getSecond().toString());
+
+            assertEquals ("4",results.get(1).getFirst().toString());
+            assertEquals ("1234",results.get(1).getSecond().toString());
+
+            assertEquals ("3",results.get(2).getFirst().toString());
+            assertEquals ("123",results.get(2).getSecond().toString());
+
+            assertEquals ("2",results.get(3).getFirst().toString());
+            assertEquals ("12",results.get(3).getSecond().toString());
+
+            assertEquals ("1",results.get(4).getFirst().toString());
+            assertEquals ("1",results.get(4).getSecond().toString());
+
+            assertEquals ("5",results.get(5).getFirst().toString());
+            assertEquals ("54321",results.get(5).getSecond().toString());
+
         }
 
 
         @Test
         public void testReducer() throws IOException {
-            List<MapWritable> values = new ArrayList<MapWritable>();
 
-            MapWritable mapRecord1 = new MapWritable();
-            mapRecord1.put(new Text("1"), new IntWritable(1));
-            mapRecord1.put(new Text("12"), new IntWritable(2));
+            List<Text> values = new ArrayList<Text>();
 
-            MapWritable mapRecord2 = new MapWritable();
-            mapRecord2.put(new Text("123"), new IntWritable(3));
-            mapRecord2.put(new Text("1234"), new IntWritable(4));
-            mapRecord2.put(new Text("12345"), new IntWritable(5));
-
-            values.add(mapRecord1);
-            values.add(mapRecord2);
-
-            reduceDriver.withInput(new Text("key"), values);
-            reduceDriver.withOutput(new Text("12345"), new IntWritable(5));
+            values.add(new Text("12345"));
+            values.add(new Text("54321"));
+            reduceDriver.withInput(new IntWritable(5), values);
+            reduceDriver.withOutput(new IntWritable(5),new Text("54321, 12345"));
             reduceDriver.runTest();
+
         }
 
         @Test
         public void testMapReduce() throws IOException {
-            mapReduceDriver.withInput(new Text("key"), new Text("1 12 123 1234 12345"));
-            List<Pair<Text,IntWritable>> results = new ArrayList<Pair<Text,IntWritable>>();
+            mapReduceDriver.withInput(new Text("key"), new Text("12345 1234 123 12 1 54321"));
+            List<Pair<IntWritable,Text>> results = new ArrayList<Pair<IntWritable,Text>>();
             results = mapReduceDriver.run();
 
-            assertEquals ("12345",results.get(0).getFirst().toString());
-            assertEquals (new IntWritable(5),results.get(0).getSecond());
+            assertEquals (new IntWritable(5),results.get(4).getFirst());
+            assertEquals ("54321, 12345",results.get(4).getSecond().toString());
+
+            assertEquals (new IntWritable(4),results.get(3).getFirst());
+            assertEquals ("1234",results.get(3).getSecond().toString());
+
+            assertEquals (new IntWritable(3),results.get(2).getFirst());
+            assertEquals ("123",results.get(2).getSecond().toString());
+
+            assertEquals (new IntWritable(2),results.get(1).getFirst());
+            assertEquals ("12",results.get(1).getSecond().toString());
+
+            assertEquals (new IntWritable(1),results.get(0).getFirst());
+            assertEquals ("1",results.get(0).getSecond().toString());
+
         }
-    }
+
+
+}
 
 
 
