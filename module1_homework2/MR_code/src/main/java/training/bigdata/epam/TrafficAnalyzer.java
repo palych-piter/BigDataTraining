@@ -20,6 +20,8 @@ public class TrafficAnalyzer {
 
     public static final Logger logger = LoggerFactory.getLogger(TrafficAnalyzer.class);
 
+
+
     public static class TokenizerMapper
             extends Mapper<Object, Text, Text, IntWritable> {
 
@@ -28,19 +30,22 @@ public class TrafficAnalyzer {
         public void map(Object key, Text value, Context context
         ) throws IOException, InterruptedException {
 
-            IntWritable bytes = new IntWritable();
-            Text ip = new Text();
+            String bytes = new String();
+            String ip = new String();
             String inputString = new String(value.toString());
 
             Scanner scanner = new Scanner(inputString);
             while (scanner.hasNextLine()) {
 
                 String line = scanner.nextLine();
+                String[] splitLine = line.split(" ");
+
+                ip = splitLine[0];
+                bytes = splitLine[9];
+
                 UserAgent userAgent = UserAgent.parseUserAgentString(line);
 
-                ip = userAgent.;
-
-                context.write(ip, bytes);
+                context.write(new Text(ip), new IntWritable(Integer.parseInt(bytes)));
 
             }
             scanner.close();
@@ -48,13 +53,13 @@ public class TrafficAnalyzer {
     }
 
     public static class IntSumReducer
-            extends Reducer<Text, IntWritable, Text, ArrayWritable> {
+            extends Reducer<Text, IntWritable, Text, MapWritable> {
 
         public void reduce(Text key, Iterable<IntWritable> byteValues,
                            Context context
         ) throws IOException, InterruptedException {
 
-            ArrayWritable outputArray = new ArrayWritable(DoubleWritable.class);
+            MapWritable outputMapRecord = new MapWritable();
             int totalBytes = 0;
             int counter = 0;
             double avarageBytes;
@@ -64,10 +69,14 @@ public class TrafficAnalyzer {
                 counter++;
             }
 
+
             avarageBytes = (double)totalBytes/(double) counter;
 
-            outputArray.set( new DoubleWritable[]{ new DoubleWritable((double) totalBytes), new DoubleWritable(avarageBytes)}) ;
-            context.write(key, outputArray );
+            outputMapRecord.put(new Text("total"), new DoubleWritable(totalBytes));
+            outputMapRecord.put(new Text("average"), new DoubleWritable(avarageBytes));
+
+            context.write(key, outputMapRecord );
+
         }
     }
 
