@@ -23,7 +23,7 @@ public class TrafficAnalyzer {
 
 
     public static class TokenizerMapper
-            extends Mapper<Object, Text, Text, IntWritable> {
+            extends Mapper<Object, Text, Text, FloatWritable> {
 
         private Text word = new Text();
 
@@ -31,8 +31,10 @@ public class TrafficAnalyzer {
         ) throws IOException, InterruptedException {
 
             String bytes = new String();
+            float floatBytes ;
             String ip = new String();
             String inputString = new String(value.toString());
+            MapWritable outputMapRecord = new MapWritable();
 
             Scanner scanner = new Scanner(inputString);
             while (scanner.hasNextLine()) {
@@ -41,36 +43,36 @@ public class TrafficAnalyzer {
                 String[] splitLine = line.split(" ");
 
                 ip = splitLine[0];
-                bytes = splitLine[9];
+                floatBytes = bytes.equals("-")?0:Float.parseFloat(splitLine[9]);
 
                 UserAgent userAgent = UserAgent.parseUserAgentString(line);
 
-                context.write(new Text(ip), new IntWritable(Integer.parseInt(bytes)));
+                context.write(new Text(ip), new FloatWritable(floatBytes));
 
             }
             scanner.close();
         }
     }
 
-    public static class IntSumReducer
-            extends Reducer<Text, IntWritable, Text, MapWritable> {
 
-        public void reduce(Text key, Iterable<IntWritable> byteValues,
+    public static class Combiner
+            extends Reducer<Text, FloatWritable, Text, MapWritable> {
+
+        public void reduce(Text key, Iterable<FloatWritable> byteValues,
                            Context context
         ) throws IOException, InterruptedException {
 
             MapWritable outputMapRecord = new MapWritable();
-            int totalBytes = 0;
+            float totalBytes = 0;
             int counter = 0;
             double avarageBytes;
 
-            for (IntWritable bytes : byteValues) {
-                totalBytes = totalBytes + bytes.get();
+            for (FloatWritable bytes : byteValues) {
+                totalBytes = totalBytes + Float.parseFloat(bytes.toString());
                 counter++;
             }
 
-
-            avarageBytes = (double)totalBytes/(double) counter;
+            avarageBytes = (double) totalBytes / (double) counter;
 
             outputMapRecord.put(new Text("total"), new DoubleWritable(totalBytes));
             outputMapRecord.put(new Text("average"), new DoubleWritable(avarageBytes));
@@ -81,17 +83,44 @@ public class TrafficAnalyzer {
     }
 
 
+
+    public static class IntSumReducer
+            extends Reducer<Text, MapWritable, Text, Text> {
+
+        public void reduce(Text key, Iterable<MapWritable> byteValues,
+                           Context context
+        ) throws IOException, InterruptedException {
+
+            double totalBytes = 0;
+            int counter = 0;
+            double averageBytes;
+
+            for (MapWritable bytes : byteValues) {
+                totalBytes = totalBytes + Double.parseDouble(bytes.get(new Text("total")).toString());
+                counter++;
+            }
+
+            averageBytes = (double) totalBytes/(double) counter;
+
+            context.write(key, new Text("Total:" + String.valueOf(totalBytes) + " Average:" + String.valueOf(averageBytes)));
+
+        }
+    }
+
+
+
+
     public static void main(String[] args) throws Exception {
 
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "traffic analyzer");
         job.setJarByClass(TrafficAnalyzer.class);
         job.setMapperClass(TokenizerMapper.class);
-        job.setCombinerClass(IntSumReducer.class);
+        job.setCombinerClass(Combiner.class);
         job.setReducerClass(IntSumReducer.class);
-        job.setOutputKeyClass(IntWritable.class);
+        job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
-        job.setMapOutputValueClass(Text.class);
+        job.setMapOutputValueClass(MapWritable.class);
         job.setSortComparatorClass(IntComparator.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));

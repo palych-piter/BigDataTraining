@@ -64,7 +64,7 @@ jar {
         attributes(
            "Implementation-Title": "Gradle",
            "Implementation-Version": version,
-           "Main-Class": "training.bigdata.epam.WordAnalyzer"
+           "Main-Class": "training.bigdata.epam.TrafficAnalyzer"
        )
     }
 
