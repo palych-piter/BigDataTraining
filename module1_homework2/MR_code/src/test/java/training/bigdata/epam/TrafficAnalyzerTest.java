@@ -15,20 +15,20 @@ import static org.junit.Assert.assertEquals;
 public class TrafficAnalyzerTest {
 
 
-        MapDriver<Object, Text, Text, FloatWritable> mapDriver;
-        ReduceDriver<Text, FloatWritable, Text, Text> reduceDriver;
-        MapReduceDriver<Object, Text, Text, FloatWritable, Text, Text> mapReduceDriver;
+        MapDriver<Object, Text, Text, MapWritable> mapDriver;
+        ReduceDriver<Text, MapWritable, Text, Text> reduceDriver;
+        MapReduceDriver<Object, Text, Text, MapWritable, Text, Text> mapReduceDriver;
 
         @Before
         public void setUp() {
 
-            TrafficAnalyzer.TokenizerMapper mapper = new TrafficAnalyzer.TokenizerMapper();
-            //TrafficAnalyzer.Combiner combiner = new TrafficAnalyzer.Combiner();
-            TrafficAnalyzer.IntSumReducer reducer = new TrafficAnalyzer.IntSumReducer();
+            TrafficAnalyzer.TrafficAnalyzerMapper mapper = new TrafficAnalyzer.TrafficAnalyzerMapper();
+            TrafficAnalyzer.TrafficAnalyzerCombiner combiner = new TrafficAnalyzer.TrafficAnalyzerCombiner();
+            TrafficAnalyzer.TrafficAnalyzerReducer reducer = new TrafficAnalyzer.TrafficAnalyzerReducer();
 
             mapDriver = MapDriver.newMapDriver(mapper);
             reduceDriver = ReduceDriver.newReduceDriver(reducer);
-            mapReduceDriver = MapReduceDriver.newMapReduceDriver(mapper, reducer);
+            mapReduceDriver = MapReduceDriver.newMapReduceDriver(mapper, reducer).withCombiner(combiner);
 
         }
 
@@ -38,11 +38,12 @@ public class TrafficAnalyzerTest {
 
             mapDriver.withInput(new Text("key"), new Text("ip140 - - [24/Apr/2011:12:34:53 -0400] \"GET /sunFAQ/ HTTP/1.1\" 200 8342 \"http://host2/\" \"Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16 ( .NET CLR 3.5.30729)\""));
 
-            List<Pair<Text, FloatWritable>> results = new ArrayList<Pair<Text, FloatWritable>>();
+            List<Pair<Text, MapWritable>> results = new ArrayList<Pair<Text, MapWritable>>();
             results = mapDriver.run();
 
             assertEquals (new Text("ip140"), results.get(0).getFirst());
-            assertEquals (new FloatWritable(8342), results.get(0).getSecond());
+            assertEquals (new FloatWritable(8342), results.get(0).getSecond().get(new Text("total")));
+            assertEquals (new FloatWritable(8342), results.get(0).getSecond().get(new Text("average")));
 
         }
 
@@ -50,10 +51,17 @@ public class TrafficAnalyzerTest {
         @Test
         public void testReducer() throws IOException {
 
-            List<FloatWritable> values = new ArrayList<FloatWritable>();
+            MapWritable inputMapRecord1 = new MapWritable();
+            inputMapRecord1.put(new Text("total"), new FloatWritable(8342));
+            inputMapRecord1.put(new Text("average"), new FloatWritable(8342));
 
-            values.add(new FloatWritable(8342));
-            values.add(new FloatWritable(29554));
+            MapWritable inputMapRecord2 = new MapWritable();
+            inputMapRecord2.put(new Text("total"), new FloatWritable(29554));
+            inputMapRecord2.put(new Text("average"), new FloatWritable(29554));
+
+            List<MapWritable> values = new ArrayList<MapWritable>();
+            values.add(inputMapRecord1);
+            values.add(inputMapRecord2);
 
             reduceDriver.withInput(new Text("ip140"), values);
 

@@ -22,8 +22,8 @@ public class TrafficAnalyzer {
 
 
 
-    public static class TokenizerMapper
-            extends Mapper<Object, Text, Text, FloatWritable> {
+    public static class TrafficAnalyzerMapper
+            extends Mapper<Object, Text, Text, MapWritable> {
 
         private Text word = new Text();
 
@@ -38,6 +38,8 @@ public class TrafficAnalyzer {
             Scanner scanner = new Scanner(inputString);
             while (scanner.hasNextLine()) {
 
+                MapWritable outputMapRecord = new MapWritable();
+
                 String line = scanner.nextLine();
                 String[] splitLine = line.split(" ");
                 ip = splitLine[0];
@@ -45,7 +47,10 @@ public class TrafficAnalyzer {
 
                 UserAgent userAgent = UserAgent.parseUserAgentString(line);
 
-                context.write(new Text(ip), new FloatWritable(floatBytes));
+                outputMapRecord.put(new Text("total"), new FloatWritable(floatBytes));
+                outputMapRecord.put(new Text("average"), new FloatWritable(floatBytes));
+
+                context.write(new Text(ip), outputMapRecord );
 
             }
             scanner.close();
@@ -53,52 +58,55 @@ public class TrafficAnalyzer {
     }
 
 
-//    public static class Combiner
-//            extends Reducer<Text, FloatWritable, Text, MapWritable> {
-//
-//        public void reduce(Text key, Iterable<FloatWritable> byteValues,
-//                           Context context
-//        ) throws IOException, InterruptedException {
-//
-//            MapWritable outputMapRecord = new MapWritable();
-//            float totalBytes = 0;
-//            int counter = 0;
-//            double avarageBytes;
-//
-//            for (FloatWritable bytes : byteValues) {
-//                totalBytes = totalBytes + Float.parseFloat(bytes.toString());
-//                counter++;
-//            }
-//
-//            avarageBytes = (double) totalBytes / (double) counter;
-//
-//            outputMapRecord.put(new Text("total"), new DoubleWritable(totalBytes));
-//            outputMapRecord.put(new Text("average"), new DoubleWritable(avarageBytes));
-//
-//            context.write(key, outputMapRecord );
-//
-//        }
-//    }
+    public static class TrafficAnalyzerCombiner
+            extends Reducer<Text, MapWritable, Text, MapWritable> {
 
-
-    public static class IntSumReducer
-            extends Reducer<Text, FloatWritable, Text, Text> {
-
-        public void reduce(Text key, Iterable<FloatWritable> byteValues,
+        public void reduce(Text key, Iterable<MapWritable> byteValues,
                            Context context
         ) throws IOException, InterruptedException {
 
-            float totalBytes = 0;
-            float averageBytes;
-            int counter = 0;
+            MapWritable outputMapRecord = new MapWritable();
 
-            for (FloatWritable bytes : byteValues) {
-                totalBytes += Float.valueOf(bytes.toString());
+            int counter = 0;
+            float totalBytes = 0;
+            float averageBytes = 0;
+
+            for (MapWritable bytes : byteValues) {
+                totalBytes += Float.valueOf(bytes.get(new Text("total")).toString());
                 counter++;
             }
             averageBytes = (float) totalBytes/(float) counter;
 
-            context.write(key, new Text("Total:" + String.valueOf(totalBytes) + " Average:" + String.valueOf(averageBytes)));
+            outputMapRecord.put(new Text("total"), new FloatWritable(totalBytes));
+            outputMapRecord.put(new Text("average"), new FloatWritable(averageBytes));
+
+            context.write(key, outputMapRecord );
+
+        }
+    }
+
+
+
+    public static class TrafficAnalyzerReducer
+            extends Reducer<Text, MapWritable, Text, Text> {
+
+        public void reduce(Text key, Iterable<MapWritable> byteValues,
+                           Context context
+        ) throws IOException, InterruptedException {
+
+            int counter = 0;
+            float totalBytes = 0;
+            float averageBytes = 0;
+            float averageBytesTotal = 0;
+
+            for (MapWritable bytes : byteValues) {
+                totalBytes += Float.valueOf(bytes.get(new Text("total")).toString());
+                averageBytes += Float.valueOf(bytes.get(new Text("average")).toString());
+                counter++;
+            }
+            averageBytesTotal = (float) averageBytes/(float) counter;
+
+            context.write(key, new Text("Total:" + String.valueOf(totalBytes) + " Average:" + String.valueOf(averageBytesTotal)));
         }
     }
 
@@ -110,12 +118,12 @@ public class TrafficAnalyzer {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "traffic analyzer");
         job.setJarByClass(TrafficAnalyzer.class);
-        job.setMapperClass(TokenizerMapper.class);
-        //job.setCombinerClass(IntSumReducer.class);
-        job.setReducerClass(IntSumReducer.class);
+        job.setMapperClass(TrafficAnalyzerMapper.class);
+        job.setCombinerClass(TrafficAnalyzerCombiner.class);
+        job.setReducerClass(TrafficAnalyzerReducer.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
-        job.setMapOutputValueClass(FloatWritable.class);
+        job.setMapOutputValueClass(MapWritable.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
