@@ -37,13 +37,23 @@ public class TrafficAnalyzerTest {
         public void testMapper() throws IOException {
 
             mapDriver.withInput(new Text("key"), new Text("ip140 - - [24/Apr/2011:12:34:53 -0400] \"GET /sunFAQ/ HTTP/1.1\" 200 8342 \"http://host2/\" \"Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16 ( .NET CLR 3.5.30729)\""));
-
             List<Pair<Text, MapWritable>> results = new ArrayList<Pair<Text, MapWritable>>();
             results = mapDriver.run();
 
             assertEquals (new Text("ip140"), results.get(0).getFirst());
             assertEquals (new FloatWritable(8342), results.get(0).getSecond().get(new Text("total")));
             assertEquals (new FloatWritable(8342), results.get(0).getSecond().get(new Text("average")));
+
+        }
+
+        @Test
+        public void testCounters() throws IOException {
+
+            mapDriver.withInput(new Text("key"), new Text("ip140 - - [24/Apr/2011:12:34:53 -0400] \"GET /sunFAQ/ HTTP/1.1\" 200 8342 \"http://host2/\" \"Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16 ( .NET CLR 3.5.30729)\""));
+            List<Pair<Text, MapWritable>> results = new ArrayList<Pair<Text, MapWritable>>();
+            results = mapDriver.run();
+            assertEquals("Expected 1 counter increment", 1, mapDriver.getCounters()
+                    .findCounter(TrafficAnalyzer.BROWSER_COUNTER.FIREFOX3).getValue());
 
         }
 

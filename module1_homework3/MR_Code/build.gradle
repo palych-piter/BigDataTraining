@@ -18,7 +18,7 @@ buildscript {
 sourceSets {
     main {
         java {
-            exclude 'src/main/resources/word-analyzer.properties'
+            exclude 'src/main/resources/BiddingPriceAnalyzer.properties'
         }
     }
 }
@@ -57,9 +57,6 @@ dependencies {
    compile 'org.apache.hadoop:hadoop-mapreduce-client-jobclient:2.8.2'
 
 
-    compile 'eu.bitwalker:UserAgentUtils:1.21'
-
-
 }
 
 
@@ -70,7 +67,7 @@ jar {
         attributes(
            "Implementation-Title": "Gradle",
            "Implementation-Version": version,
-           "Main-Class": "training.bigdata.epam.TrafficAnalyzer"
+           "Main-Class": "training.bigdata.epam.BiddingPriceAnalyzer"
        )
     }
 
@@ -96,7 +93,7 @@ jar {
     task copyFiles  {
         doLast  {
             copy {
-                from 'src/main/resources/word-analyzer.properties'
+                from 'src/main/resources/BiddingPriceAnalyzer.properties'
                 into 'build/libs/'
             }
         }

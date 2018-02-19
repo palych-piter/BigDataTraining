@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="training.bigdata.epam.BiddingPriceAnalyzerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2018-02-18T20:20:12" hostname="EPRUPETW1474" time="0.89">
+  <properties/>
+  <testcase name="testReducer" classname="training.bigdata.epam.BiddingPriceAnalyzerTest" time="0.728"/>
+  <testcase name="testMapper" classname="training.bigdata.epam.BiddingPriceAnalyzerTest" time="0.077"/>
+  <testcase name="testMapReduce" classname="training.bigdata.epam.BiddingPriceAnalyzerTest" time="0.084"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/C:/Users/Andrei_Bespalov/.gradle/caches/modules-2/files-2.1/ch.qos.logback/logback-classic/1.2.2/f81d1cb16fc384523de17ba46370d863bc2f691/logback-classic-1.2.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/C:/Users/Andrei_Bespalov/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-log4j12/1.7.10/b3eeae7d1765f988a1f45ea81517191315c69c9e/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [ch.qos.logback.classic.util.ContextSelectorStaticBinder]
+log4j:WARN No appenders could be found for logger (org.apache.hadoop.mrunit.mapreduce.MapReduceDriver).
+log4j:WARN Please initialize the log4j system properly.
+log4j:WARN See http://logging.apache.org/log4j/1.2/faq.html#noconfig for more info.
+]]></system-err>
+</testsuite>

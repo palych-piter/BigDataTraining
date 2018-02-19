@@ -7,20 +7,22 @@ import java.util.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import eu.bitwalker.useragentutils.UserAgent;
 
+
 public class TrafficAnalyzer {
 
     public static final Logger logger = LoggerFactory.getLogger(TrafficAnalyzer.class);
 
-
+    public static enum BROWSER_COUNTER {
+        IE6,
+        FIREFOX3
+    };
 
     public static class TrafficAnalyzerMapper
             extends Mapper<Object, Text, Text, MapWritable> {
@@ -46,6 +48,13 @@ public class TrafficAnalyzer {
                 floatBytes = splitLine[9].equals("-")?0:Float.parseFloat(splitLine[9]);
 
                 UserAgent userAgent = UserAgent.parseUserAgentString(line);
+                if (userAgent.getBrowser().toString().equals("FIREFOX3")) {
+                    context.getCounter(BROWSER_COUNTER.FIREFOX3).increment(1);
+                } else {
+                    if (userAgent.getBrowser().toString().equals("IE6")) {
+                        context.getCounter(BROWSER_COUNTER.IE6).increment(1);
+                    }
+                }
 
                 outputMapRecord.put(new Text("total"), new FloatWritable(floatBytes));
                 outputMapRecord.put(new Text("average"), new FloatWritable(floatBytes));
@@ -116,6 +125,7 @@ public class TrafficAnalyzer {
     public static void main(String[] args) throws Exception {
 
         Configuration conf = new Configuration();
+
         Job job = Job.getInstance(conf, "traffic analyzer");
         job.setJarByClass(TrafficAnalyzer.class);
         job.setMapperClass(TrafficAnalyzerMapper.class);
@@ -124,9 +134,14 @@ public class TrafficAnalyzer {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setMapOutputValueClass(MapWritable.class);
+
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
         System.exit(job.waitForCompletion(true) ? 0 : 1);
+
+        //long counter = job.getCounters().findCounter(BROWSER_COUNTER.FIREFOX3).getValue();
+        //System.out.println("Firefox3 Counter: " + counter);
 
     }
 
