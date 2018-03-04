@@ -18,7 +18,7 @@ buildscript {
 sourceSets {
     main {
         java {
-            exclude 'src/main/resources/word-analyzer.properties'
+            exclude 'src/main/resources/BiddingPriceAnalyzer.properties'
         }
     }
 }
@@ -69,7 +69,7 @@ jar {
         attributes(
            "Implementation-Title": "Gradle",
            "Implementation-Version": version,
-           "Main-Class": "training.bigdata.epam.TrafficAnalyzer"
+           "Main-Class": "training.bigdata.epam.BiddingPriceAnalyzer"
        )
     }
 
@@ -95,7 +95,7 @@ jar {
     task copyFiles  {
         doLast  {
             copy {
-                from 'src/main/resources/word-analyzer.properties'
+                from 'src/main/resources/BiddingPriceAnalyzer.properties'
                 into 'build/libs/'
             }
         }
