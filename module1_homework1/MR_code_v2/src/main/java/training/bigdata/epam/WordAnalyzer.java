@@ -61,7 +61,7 @@ public class WordAnalyzer {
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(Text.class);
         job.setMapOutputValueClass(Text.class);
-        job.setSortComparatorClass(IntComparator.class);
+        job.setSortComparatorClass(IntWritable.Comparator.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);

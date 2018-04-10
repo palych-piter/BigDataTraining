@@ -1,0 +1,1 @@
+sqoop export --connect jdbc:mysql://localhost/homework_aux --table weather --staging-table weather_staging --clear-staging-table --username root --password hadoop --export-dir /bgtraining/aux/sqoop/input -m 6 --input-fields-terminated-by ',' --lines-terminated-by '\n'
