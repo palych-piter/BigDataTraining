@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.schwering:irclib:1.10">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.schwering/irclib/1.10/8a2095adb4f1f65474a38be2c0175977ae11b0b8/irclib-1.10.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.schwering/irclib/1.10/fc42ae6b7699ffd8a5752cd9d48952ba8dd3a1eb/irclib-1.10-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

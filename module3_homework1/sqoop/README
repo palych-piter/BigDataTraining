@@ -1,0 +1,11 @@
+How to export data from HDFS to Mysql:
+
+1. Put files under the /bgtraining/aux/sqoop/input folder
+2. Connect to MySQL, create aux database and create weather and weather_staging tables : 
+
+create database aux
+create table weather (stationId varchar(255), date varchar(255), tmin varchar(255), tmax varchar(255), snow varchar(255), snwd varchar(255), prcp varchar(255));
+create table weather_staging (stationId varchar(255), date varchar(255), tmin varchar(255), tmax varchar(255), snow varchar(255), snwd varchar(255), prcp varchar(255));
+
+3. Run the script in the screpts folder
+4. Connect to MySql and see results by running select * from weather against the aux database; 

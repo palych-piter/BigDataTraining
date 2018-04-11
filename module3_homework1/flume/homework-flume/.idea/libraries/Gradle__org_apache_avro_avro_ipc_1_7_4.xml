@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.avro:avro-ipc:1.7.4">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.4/d2c8777ef5c6c4bf0897dacbda94218e7b4e0167/avro-ipc-1.7.4.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.avro/avro-ipc/1.7.4/cf54eeb1b65fc60fec65a4fa89131a815268fa5f/avro-ipc-1.7.4-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

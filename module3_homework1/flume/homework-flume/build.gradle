@@ -1,0 +1,86 @@
+group 'training.bigdata.epam'
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+version '1.0'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
+    }
+}
+
+
+sourceSets {
+    main {
+        java {
+        }
+    }
+}
+
+//For building a single jar with all dependencies run "gradlew shadowJar"
+// Configure the shadow jar task
+shadowJar {
+    // exclude properties file from jar
+    mergeServiceFiles()
+    //here we set a name format of jar file
+    archiveName = "flume-${version}.${extension}"
+}
+
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    compile 'ch.qos.logback:logback-classic:1.2.2'
+    compile 'org.apache.flume:flume-ng-sdk:1.7.0'
+    compile 'org.apache.flume:flume-ng-node:1.7.0'
+}
+
+
+jar {
+
+    manifest {
+
+        attributes(
+                "Implementation-Title": "Gradle",
+                "Implementation-Version": version,
+                "Main-Class": "training.bigdata.epam.FlumeLauncher"
+        )
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+
+//filtering out test classes, only test suites should be run
+    test {
+        testLogging.showStandardStreams = true
+        testLogging.exceptionFormat = 'full'
+    }
+
+    //the copyFiles task executes right after the shadowJar and copy
+    //the property and test files into the build folder
+    task copyFiles  {
+        doLast  {
+            copy {
+                from 'src/main/resources/flume.conf'
+                into 'build/libs/'
+            }
+
+        }
+    }
+
+    shadowJar.finalizedBy(copyFiles)
+
+}

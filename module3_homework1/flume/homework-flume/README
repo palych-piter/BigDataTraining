@@ -1,0 +1,10 @@
+How to run the streaming from file to HDFS :
+
+0. Compile the jar file with the gradle shadowJar command. The jar and flume.conf files will be created.
+Transfer the jar and conf file in a hdp folder
+1. Put the file linux_messages_3000lines.txt into the source directory
+2. Run the  following linux command in the source directory:
+cat linux_messages_3000lines.txt | while read line ; do echo "$line" ; sleep 0.2 ; done > output.txt
+3. In another session start the flume agent : hadoop jar flume-1.0.jar
+4. See results in the /bgtraining/aux/flame/output HDFS folder.
+5. If necessary set parameters in the conf files.

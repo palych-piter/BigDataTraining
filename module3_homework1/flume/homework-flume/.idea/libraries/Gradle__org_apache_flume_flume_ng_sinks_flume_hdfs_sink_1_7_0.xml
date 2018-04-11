@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.flume.flume-ng-sinks:flume-hdfs-sink:1.7.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume.flume-ng-sinks/flume-hdfs-sink/1.7.0/6fe1d2b606327f8c99bb50c48590e6a3e2d93031/flume-hdfs-sink-1.7.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume.flume-ng-sinks/flume-hdfs-sink/1.7.0/4f6d371509de60757964faf22e87f4aa3689004/flume-hdfs-sink-1.7.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

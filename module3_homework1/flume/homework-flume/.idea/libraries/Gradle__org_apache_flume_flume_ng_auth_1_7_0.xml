@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.flume:flume-ng-auth:1.7.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume/flume-ng-auth/1.7.0/e8e972a288e73ef87bd6205084c8207703b6b9bf/flume-ng-auth-1.7.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume/flume-ng-auth/1.7.0/490b08e1fdababf1d770cd305dccb9524f4882df/flume-ng-auth-1.7.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

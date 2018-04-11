@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.flume.flume-ng-channels:flume-spillable-memory-channel:1.7.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume.flume-ng-channels/flume-spillable-memory-channel/1.7.0/6a2af5130eb92b362e9d4cd7cd470e4ac778e4ab/flume-spillable-memory-channel-1.7.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.flume.flume-ng-channels/flume-spillable-memory-channel/1.7.0/ffa1854b7d6d5b58403766eb2540e2dd06c0d26a/flume-spillable-memory-channel-1.7.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
