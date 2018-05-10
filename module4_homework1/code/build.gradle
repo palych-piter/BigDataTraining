@@ -1,0 +1,90 @@
+group 'spark-core'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+version '1.0'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            //exclude 'src/main/resources/qa-config.properties'
+        }
+    }
+}
+
+
+//For building a single jar with all dependencies run "gradlew shadowJar"
+// Configure the shadow jar task
+shadowJar {
+    // exclude properties file from jar
+    //exclude('qa-config.properties')
+    mergeServiceFiles()
+    //here we set a name format of jar file
+    archiveName = "tcodata-spark-qa-framework${version}.${extension}"
+    zip64 true
+}
+
+
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    //logging
+    compile 'ch.qos.logback:logback-classic:1.2.2'
+
+    compile 'javax.persistence:persistence-api:1.0.2'
+    compile('junit:junit:4.12'){
+        exclude group: 'org.hamcrest'
+    }
+    compile 'org.hamcrest:hamcrest-library:1.3'
+
+    //Scala
+    compile group: 'org.scala-lang', name: 'scala-library'
+
+    //Spark section
+    compile 'org.apache.spark:spark-core_2.11:2.2.1'
+    compile 'org.apache.spark:spark-hive_2.11:2.2.1'
+    compile 'org.apache.spark:spark-sql_2.11:2.2.1'
+    compile 'org.apache.spark:spark-streaming_2.11:2.2.1'
+    compile 'com.holdenkarau:spark-testing-base_2.11:2.3.0_0.9.0'
+}
+
+
+jar {
+
+    manifest {
+
+        attributes(
+                "Implementation-Title": "Gradle",
+                "Implementation-Version": version,
+                "Main-Class": "training.bigdata.epam.Driver"
+        )
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+//filtering out test classes, only test suites should be run
+    test {
+        testLogging.showStandardStreams = true
+        testLogging.exceptionFormat = 'full'
+    }
+
+}

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.apache.spark:spark-launcher_2.11:2.2.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-launcher_2.11/2.2.1/7d3104941ee9045ca7e098b8eeef12959f7cc410/spark-launcher_2.11-2.2.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.spark/spark-launcher_2.11/2.2.1/901da2abc1959a94e17f6a9c1e77a8aee54c1b56/spark-launcher_2.11-2.2.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
