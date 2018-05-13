@@ -4,23 +4,23 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.sql.Row;
+import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import scala.tools.cmd.gen.AnyVals;
 
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 
 public class Driver {
 
-    public static JavaPairRDD<String, Double>  exchangeRateMap;
+    public static DecimalFormat numberFormat = new DecimalFormat("#0.000");
+    public static DateFormat dateFormatOutput = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S", Locale.ENGLISH);
+    public static DateFormat dateFormatInput = new SimpleDateFormat("HH-dd-MM-yyyy", Locale.ENGLISH);
+
 
     public static void main(String[] args) {
 
@@ -42,28 +42,31 @@ public class Driver {
 
         // read text files to RDD
         JavaRDD<String> bids = sc.textFile(bidsPath,1);
-        JavaRDD<String> exchangeRates = sc.textFile(exchangeRatePath,1);
-        JavaRDD<String> motels = sc.textFile(motelsPath,1);
+        //Task 2: load currency, prepare for joining
+        JavaPairRDD<String,String> exchangeRateMap = sc.textFile(exchangeRatePath,1)
+                .mapToPair(w -> new Tuple2<>(w.split(",")[0], w.split(",")[3]));
+        //Task 4: load hotels, prepare for joining
+        JavaPairRDD<Integer,String> motels = sc.textFile(motelsPath,1)
+                .mapToPair(h -> new Tuple2<>(Integer.parseInt(h.split(",")[0]), h.split(",")[3]));
 
 
         //Task 1 : count errors
         JavaPairRDD<String, Integer>  errorCountsMap = errorCounts(bids);
         errorCountsMap.saveAsTextFile(System.getProperty("user.dir")+ "/output/error-map");
 
-
-        //Task 2: create currency map table
-        exchangeRateMap = createExchangeRateMap(exchangeRates);
-        exchangeRateMap.saveAsTextFile(System.getProperty("user.dir")+ "/output/exchange-rate-map");
-
-
-        //Task 3: explode the bids
-        JavaRDD explodedBids = explodeBids(bids);
+        //Task 3: explode the bids, convert to a pair rdd
+        JavaPairRDD<String,String> explodedBids = explodeBids(bids);
         explodedBids.saveAsTextFile(System.getProperty("user.dir")+ "/output/exploded-bids");
 
-        JavaRDD convertedBids = convertBids(explodedBids);
+        //join with currency
+        JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency =
+                explodedBids.join(exchangeRateMap);
+        explodedBidsJoinedWithCurrency.saveAsTextFile(System.getProperty("user.dir")+ "/output/currency-joined--bids");
+
+        JavaRDD<String> convertedBids = convertBids(explodedBidsJoinedWithCurrency);
         convertedBids.saveAsTextFile(System.getProperty("user.dir")+ "/output/converted-bids");
 
-        sc.close();
+       sc.close();
 
     }
 
@@ -79,18 +82,8 @@ public class Driver {
     }
 
 
-    private static JavaPairRDD<String, Double> createExchangeRateMap(JavaRDD<String> exchange_rates) {
-        DateFormat format_input = new SimpleDateFormat("HH-dd-MM-yyyy", Locale.ENGLISH);
-        DateFormat format_output = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S", Locale.ENGLISH);
-        return exchange_rates
-                .mapToPair(w ->
-                        new Tuple2<>(format_input.format(format_input.parse(w.split(",")[0])), Double.parseDouble(w.split(",")[3]))
-                );
-    }
-
-
-    private static JavaRDD explodeBids(JavaRDD<String> bids) {
-        return bids
+    private static JavaPairRDD explodeBids(JavaRDD<String> bids) {
+        JavaRDD<String> _tmpBids =  bids
                 //filter records without errors
                 .filter(s -> !s.split(",")[2].contains("ERROR"))
                 //get only required columns
@@ -117,36 +110,39 @@ public class Driver {
                         "CA," + s.split(",")[8] + "\t"
                 )
                 .flatMap(s -> Arrays.asList(s.split("\t")).iterator())
-                .filter(s -> s.split(",").length == 4)
-         ;
+                //filter rows with amount > 0
+                .filter(s -> s.split(",").length == 4);
+
+
+                //convert to pair rdd
+                JavaPairRDD<String, String> explodedPairsRdd =
+                        _tmpBids.mapToPair(new PairFunction<String, String, String>() {
+                            public Tuple2<String, String> call(String s) {
+                                String[] transactionSplit = s.split(",");
+                                return new Tuple2<String, String>(
+                                           transactionSplit[1],
+                                        transactionSplit[0] + "," +
+                                           transactionSplit[2] + "," +
+                                           transactionSplit[3]
+                                );
+                            }
+                });
+                return explodedPairsRdd;
     }
 
 
-    private static JavaRDD convertBids(JavaRDD<String> bids) {
-        DateFormat format_input = new SimpleDateFormat("HH-dd-MM-yyyy", Locale.ENGLISH);
-        DateFormat format_output = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S", Locale.ENGLISH);
-        return bids
-                .map(s ->
-                        s.split(",")[0] + "," +
-                        format_output.format(format_input.parse(s.split(",")[1])) + "," +
-                        s.split(",")[2] + "," +
-                        convertCurrency(
-                                s.split(",")[1],
-                                Double.parseDouble(s.split(",")[3])
-                        )
-                )
-                ;
+    private static JavaRDD<String> convertBids(JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency) {
+        return explodedBidsJoinedWithCurrency
+                .map( s->
+                        //hotel id
+                        s._2._1.split(",")[0] + "," +
+                                //date
+                                dateFormatOutput.format(dateFormatInput.parse(s._1)) + "," +
+                                //country
+                                s._2._1.split(",")[1] + "," +
+                                //converted sum
+                                numberFormat.format(Double.parseDouble(s._2._1.split(",")[2]) * Double.parseDouble(s._2._2))
+                );
     }
-
-
-    private static Double convertCurrency(String date, Double amount) {
-        DecimalFormat numberFormat = new DecimalFormat("#.000");
-        return
-                Double.parseDouble(
-                        numberFormat.format(amount * exchangeRateMap.filter(s -> s._1.equals(date)).first()._2)
-                )
-        ;
-    }
-
 
 }
