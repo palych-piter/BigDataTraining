@@ -81,7 +81,7 @@ public class Driver {
     }
 
 
-    private static JavaPairRDD<String, Integer> errorCounts(JavaRDD<String> bids) {
+    public static JavaPairRDD<String, Integer> errorCounts(JavaRDD<String> bids) {
         return bids
                 //filter only errors
                 .filter(s -> s.split(",")[2].contains("ERROR"))
@@ -92,33 +92,37 @@ public class Driver {
     }
 
 
-    private static JavaPairRDD explodeBids(JavaRDD<String> bids) {
+    public static JavaPairRDD<String, String> explodeBids(JavaRDD<String> bids) {
         JavaRDD<String> _tmpBids = bids
                 //filter records without errors
                 .filter(s -> !s.split(",")[2].contains("ERROR"))
                 //get only required columns
-                .map(s ->
-                        //id
-                        s.split(",")[0] + "," +
-                                //date
-                                s.split(",")[1] + "," +
-                                //sum
-                                "US," + s.split(",")[5] + "\t" +
+                .map(s -> {
+                            String[] array = s.split(",");
+                            //id
+                            return array[0] + "," +
+                                    //date
+                                    array[1] + "," +
+                                    //sum
+                                    "US," + array[5] + "\t" +
 
-                                //id
-                                s.split(",")[0] + "," +
-                                //date
-                                s.split(",")[1] + "," +
-                                //sum
-                                "MX," + s.split(",")[6] + "\t" +
+                                    //id
+                                    array[0] + "," +
+                                    //date
+                                    array[1] + "," +
+                                    //sum
+                                    "MX," + array[6] + "\t" +
 
-                                //id
-                                s.split(",")[0] + "," +
-                                //date
-                                s.split(",")[1] + "," +
-                                //sum
-                                "CA," + s.split(",")[8] + "\t"
+                                    //id
+                                    array[0] + "," +
+                                    //date
+                                    array[1] + "," +
+                                    //sum
+                                    "CA," + array[8] + "\t";
+                        }
                 )
+
+
                 .flatMap(s -> Arrays.asList(s.split("\t")).iterator())
                 //filter rows with amount > 0
                 .filter(s -> s.split(",").length == 4);
@@ -130,10 +134,10 @@ public class Driver {
                     public Tuple2<String, String> call(String s) {
                         String[] transactionSplit = s.split(",");
                         return new Tuple2<String, String>(
-                                transactionSplit[1],
-                                transactionSplit[0] + "," +
-                                        transactionSplit[2] + "," +
-                                        transactionSplit[3]
+                               transactionSplit[1],
+                            transactionSplit[0] + "," +
+                               transactionSplit[2] + "," +
+                               transactionSplit[3]
                         );
                     }
                 });
@@ -142,17 +146,17 @@ public class Driver {
     }
 
 
-    private static JavaPairRDD<Integer, String> convertBids(JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency) {
+    public static JavaPairRDD<Integer, String> convertBids(JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency) {
         JavaRDD<String> _tmpBids = explodedBidsJoinedWithCurrency
                 .map(s ->
                         //hotel id
                         s._2._1.split(",")[0] + "," +
-                                //date
-                                dateFormatOutput.format(dateFormatInput.parse(s._1)) + "," +
-                                //country
-                                s._2._1.split(",")[1] + "," +
-                                //converted sum
-                                numberFormat.format(Double.parseDouble(s._2._1.split(",")[2]) * Double.parseDouble(s._2._2))
+                       //date
+                        dateFormatOutput.format(dateFormatInput.parse(s._1)) + "," +
+                        //country
+                        s._2._1.split(",")[1] + "," +
+                        //converted sum
+                        numberFormat.format(Double.parseDouble(s._2._1.split(",")[2]) * Double.parseDouble(s._2._2))
                 );
 
 
@@ -169,7 +173,7 @@ public class Driver {
     }
 
 
-    private static JavaPairRDD<String,String> findMaximum(JavaPairRDD<Integer, Tuple2<String, String>> bids) {
+    public static JavaPairRDD<String,String> findMaximum(JavaPairRDD<Integer, Tuple2<String, String>> bids) {
 
         return bids
                 .mapToPair(w -> new Tuple2<>(
