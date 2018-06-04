@@ -30,12 +30,7 @@ public class DriverTest {
     public void initialize()  {
 
         // configure spark
-        SparkConf sparkConf = new SparkConf()
-                .setAppName("spark-core")
-                .setMaster("local[2]");
-
-        // start a spark context
-        sc = new JavaSparkContext(sparkConf);
+        sc = Driver.establishSparkContext();
 
         List<String> finalResultList = Arrays.asList("8,2015-10-18 12:00:00.0,US,1.726,Sheraton Moos' Motor Inn");
         finalResultExpected = sc.parallelize(finalResultList);
@@ -46,21 +41,9 @@ public class DriverTest {
         List<String> expectedBidstList = Arrays.asList("11-05-08-2016,0000002,US,0.68");
         expectedExplodedBids = sc.parallelize(expectedBidstList);
 
+        Driver.readData(sc);
 
-        // provide path to input text files
-        String bidsPath = Driver.class.getResource("/bids.txt").getPath();
-        String exchangeRatePath = Driver.class.getResource("/exchange_rate.txt").getPath();
-        String motelsPath = Driver.class.getResource("/motels.txt").getPath();
-
-        JavaRDD<String> bids = sc.textFile(bidsPath, 1);
-
-        JavaPairRDD<String, String> exchangeRateMap = sc.textFile(exchangeRatePath, 1)
-                .mapToPair(w -> new Tuple2<>(w.split(",")[0], w.split(",")[3]));
-
-        JavaPairRDD<Integer, String> motels = sc.textFile(motelsPath, 1)
-                .mapToPair(h -> new Tuple2<>(Integer.parseInt(h.split(",")[0]), h.split(",")[1]));
-
-        errorCountsActual = Driver.errorCounts(bids)
+        errorCountsActual = Driver.errorCounts(Driver.bids)
                 .map(s-> s._1 + "," + s._2)
                 .filter(s-> {
                      String [] array = s.split(",");
@@ -68,7 +51,7 @@ public class DriverTest {
                              && array[1].equals("ERROR_ACCESS_DENIED");
                 });
 
-        JavaPairRDD<String,String> explodedBids = Driver.explodeBids(bids);
+        JavaPairRDD<String,String> explodedBids = Driver.explodeBids(Driver.bids);
         actualExplodedBids = explodedBids
                 .map(s-> s._1 + "," + s._2)
                 .filter(s-> {
@@ -79,12 +62,12 @@ public class DriverTest {
                 });
 
         JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency =
-                explodedBids.join(exchangeRateMap);
+                explodedBids.join(Driver.exchangeRateMap);
 
         JavaPairRDD<Integer, String> convertedBids = Driver.convertBids(explodedBidsJoinedWithCurrency);
 
         JavaPairRDD<Integer, Tuple2<String, String>> explodedBidsJoinedWithHotels =
-                convertedBids.join(motels);
+                convertedBids.join(Driver.motels);
 
         finalResultActual = Driver.findMaximum(explodedBidsJoinedWithHotels)
                 .map(s-> s._1 + "," + s._2).filter(s-> s.split(",")[0].equals("8") && s.split(",")[1].equals("2015-10-18 12:00:00.0"));
