@@ -1,3 +1,4 @@
+import com.google.common.collect.ImmutableList;
 import com.holdenkarau.spark.testing.JavaRDDComparisons;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -7,10 +8,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import scala.Tuple2;
+import training.bigdata.epam.BidError;
+import training.bigdata.epam.BidItem;
 import training.bigdata.epam.Driver;
 
 import java.util.Arrays;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 
 public class DriverTest {
@@ -21,9 +26,12 @@ public class DriverTest {
     JavaRDD<String> finalResultActual;
     JavaRDD<String> finalResultExpected;
     JavaRDD<String> errorCountsActual;
-    JavaRDD<String> errorCountsExpected;
-    JavaRDD<String> actualExplodedBids;
-    JavaRDD<String> expectedExplodedBids;
+
+    JavaRDD<BidError> errorCountsActualCustom;
+    JavaRDD<BidError> errorCountsExpected;
+
+    JavaRDD<BidItem> actualExplodedBids;
+    JavaRDD<BidItem> expectedExplodedBids;
 
 
     @Before
@@ -35,39 +43,46 @@ public class DriverTest {
         List<String> finalResultList = Arrays.asList("8,2015-10-18 12:00:00.0,US,1.726,Sheraton Moos' Motor Inn");
         finalResultExpected = sc.parallelize(finalResultList);
 
-        List<String> errorCounttList = Arrays.asList("05-21-11-2015,ERROR_ACCESS_DENIED,1");
-        errorCountsExpected = sc.parallelize(errorCounttList);
+        List<BidError> bidErrorList = ImmutableList.of(
+                new BidError("05-21-11-2015","ERROR_ACCESS_DENIED", 1));
+        errorCountsExpected = sc.parallelize(bidErrorList);
 
-        List<String> expectedBidstList = Arrays.asList("11-05-08-2016,0000002,US,0.68");
-        expectedExplodedBids = sc.parallelize(expectedBidstList);
+
+        List<BidItem> bidItemList = ImmutableList.of(
+                new BidItem("11-05-08-2016","0000002","US",0.68));
+        expectedExplodedBids = sc.parallelize(bidItemList);
+
 
         Driver.readData(sc);
 
-        errorCountsActual = Driver.errorCounts(Driver.bids)
-                .map(s-> s._1 + "," + s._2)
+        errorCountsActualCustom = Driver.errorCountsCustom(Driver.bids)
                 .filter(s-> {
-                     String [] array = s.split(",");
-                     return array[0].equals("05-21-11-2015")
-                             && array[1].equals("ERROR_ACCESS_DENIED");
-                });
+                                return s.getDate().equals("05-21-11-2015")
+                                    && s.getCount().equals(1)
+                                    && s.getErrorMessage().equals("ERROR_ACCESS_DENIED");
+                            }
+                        );
 
-        JavaPairRDD<String,String> explodedBids = Driver.explodeBids(Driver.bids);
+        JavaRDD<BidItem> explodedBids = Driver.explodeBids(Driver.bids);
         actualExplodedBids = explodedBids
-                .map(s-> s._1 + "," + s._2)
                 .filter(s-> {
-                    String [] array = s.split(",");
-                    return array[0].equals("11-05-08-2016")
-                            && array[1].equals("0000002")
-                            && array[2].equals("US");
+                    return s.getDate().equals("11-05-08-2016")
+                        && s.getMotelId().equals("0000002")
+                        && s.getLoSa().equals("US")
+                        && s.getPrice().equals(0.68);
                 });
 
-        JavaPairRDD<String, Tuple2<String, String>> explodedBidsJoinedWithCurrency =
-                explodedBids.join(Driver.exchangeRateMap);
+
+        JavaPairRDD<String, BidItem> explodedBidsToJoin =
+                explodedBids.mapToPair( s-> new Tuple2<>(s.getDate(),s) );
+        JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency =
+                explodedBidsToJoin.join(Driver.exchangeRateMap);
 
         JavaPairRDD<Integer, String> convertedBids = Driver.convertBids(explodedBidsJoinedWithCurrency);
 
         JavaPairRDD<Integer, Tuple2<String, String>> explodedBidsJoinedWithHotels =
                 convertedBids.join(Driver.motels);
+
 
         finalResultActual = Driver.findMaximum(explodedBidsJoinedWithHotels)
                 .map(s-> s._1 + "," + s._2).filter(s-> s.split(",")[0].equals("8") && s.split(",")[1].equals("2015-10-18 12:00:00.0"));
@@ -83,14 +98,30 @@ public class DriverTest {
 
     @Test
     public void compare_error_counts() {
-        JavaRDDComparisons.assertRDDEquals(
-                errorCountsExpected, errorCountsActual);
+                assertEquals(
+                        errorCountsExpected.collect().get(0).getDate() +
+                                errorCountsExpected.collect().get(0).getErrorMessage() +
+                                errorCountsExpected.collect().get(0).getCount().toString() ,
+                        errorCountsActualCustom.collect().get(0).getDate() +
+                              errorCountsActualCustom.collect().get(0).getErrorMessage() +
+                              errorCountsActualCustom.collect().get(0).getCount().toString()
+                );
     }
 
     @Test
     public void compare_exployed_bids() {
-        JavaRDDComparisons.assertRDDEquals(
-                expectedExplodedBids, actualExplodedBids);
+                assertEquals(
+
+                        expectedExplodedBids.collect().get(0).getDate() +
+                                expectedExplodedBids.collect().get(0).getLoSa() +
+                                expectedExplodedBids.collect().get(0).getMotelId() +
+                                expectedExplodedBids.collect().get(0).getPrice().toString() ,
+                        actualExplodedBids.collect().get(0).getDate() +
+                                actualExplodedBids.collect().get(0).getLoSa() +
+                                actualExplodedBids.collect().get(0).getMotelId() +
+                                actualExplodedBids.collect().get(0).getPrice().toString()
+
+                );
     }
 
     @Test
