@@ -5,10 +5,10 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.rdd.RDD;
 import scala.Tuple2;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -29,7 +29,7 @@ public class Driver {
 
     public static JavaSparkContext sc;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
 
         List<String> errorCounts;
 
@@ -41,7 +41,18 @@ public class Driver {
 
         //Task 1 : count errors
         JavaRDD<BidError> errorCountsMap = errorCountsCustom(bids);
-        //errorCountsMap.saveAsTextFile(System.getProperty("user.dir") + "/output/error-counts");
+        //save results
+        PrintWriter outputError = new PrintWriter("errors.txt");
+        for(BidError resultItem : errorCountsMap.collect()) {
+            outputError.println(
+                    resultItem.getDate() + "," +
+                            resultItem.getErrorMessage() + "," +
+                            resultItem.getCount().toString()
+            );
+        }
+        outputError.close();
+
+
 
         //Task 3: explode the bids, convert to a pair rdd
         JavaRDD<BidItem> explodedBids = explodeBids(bids);
@@ -54,20 +65,32 @@ public class Driver {
         JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency =
                 explodedBidsToJoin.join(exchangeRateMap);
 
-        JavaPairRDD<Integer, String> convertedBids = convertBids(explodedBidsJoinedWithCurrency);
+
+        JavaRDD<BidConverted> convertedBids = convertBids(explodedBidsJoinedWithCurrency);
+        //convert to JavaPairRDD for joining, the key is motelid
+        JavaPairRDD<Integer, BidConverted> convertedBidsToJoin =
+                convertedBids.mapToPair( s-> new Tuple2<>(s.getMotelId(),s) );
 
         //Task 5: join with hotels
-        JavaPairRDD<Integer, Tuple2<String, String>> explodedBidsJoinedWithHotels =
-                convertedBids.join(motels);
-        //convert to custom class
-        //explodedBidsJoinedWithHotelsCustom =
-
+        JavaPairRDD<Integer, Tuple2<BidConverted, String>> explodedBidsJoinedWithHotels =
+                convertedBidsToJoin.join(motels);
 
         //convert to pair map to group by motelid / date and find maximum
-        JavaPairRDD<String,String> finalResult = findMaximum(explodedBidsJoinedWithHotels);
+        JavaRDD<EnrichedItem> finalResult = findMaximum(explodedBidsJoinedWithHotels);
 
         //save the final results
-        finalResult.saveAsTextFile(System.getProperty("user.dir") + "/output/final-result");
+        //finalResult.saveAsTextFile(System.getProperty("user.dir") + "/output/final-result");
+        PrintWriter outputFinal = new PrintWriter("final.txt");
+        for(EnrichedItem resultItem : finalResult.collect()){
+            outputFinal.println(
+                    resultItem.getDate() + "," +
+                    resultItem.getMotelId() + "," +
+                    resultItem.getHotelName() + "," +
+                    resultItem.getPrice() + "," +
+                    resultItem.getLoSa()
+            );
+        }
+        outputFinal.close();
 
         sc.close();
 
@@ -194,48 +217,43 @@ public class Driver {
     }
 
 
-    public static JavaPairRDD<Integer, String> convertBids(JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency) {
-
-        JavaRDD<String> _tmpBids = explodedBidsJoinedWithCurrency
-                .map(s -> {
-                                String hotelId = s._2._1.getMotelId();
-                                String date = dateFormatOutput.format(dateFormatInput.parse(s._1));
-                                String country = s._2._1.getLoSa();
-                                String convertedSum = numberFormat.format(s._2._1.getPrice() * Double.parseDouble(s._2._2));
-
-                                return hotelId + "," + date + "," + country + "," + convertedSum;
-                        }
-                );
-
+    public static JavaRDD<BidConverted> convertBids(JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency) {
 
         //convert to pair rdd
-        JavaPairRDD<Integer, String> convertedPairsRdd =
-                _tmpBids.mapToPair(s -> {
+        JavaRDD<BidConverted> convertedPriceRdd =
+                explodedBidsJoinedWithCurrency
+                .map(s -> {
 
-                    String[] array = s.split(",");
-                    return new Tuple2<>(Integer.parseInt(array[0]),array[1] + "," + array[2] + "," + array[3]);
+                    Integer motelid = Integer.parseInt(s._2._1.getMotelId());
+                    String date = dateFormatOutput.format(dateFormatInput.parse(s._1));
+                    String country = s._2._1.getLoSa();
+                    Double convertedSum = Double.parseDouble(numberFormat.format(s._2._1.getPrice() * Double.parseDouble(s._2._2)));
+
+                    return new BidConverted(date,motelid,country,convertedSum);
 
                 }
                 );
 
-        return convertedPairsRdd;
+        return convertedPriceRdd;
 
     }
 
 
-    public static JavaPairRDD<String,String> findMaximum(JavaPairRDD<Integer, Tuple2<String, String>> bids) {
+    public static JavaRDD<EnrichedItem> findMaximum(JavaPairRDD<Integer, Tuple2<BidConverted, String>> bids) {
 
         return bids
                 .mapToPair(w -> {
 
-                            String[] array = w._2._1.split(",");
-                            String date = w._1.toString() + "," + array[0];
-                            String value = array[1] + "," + array[2] +  "," + w._2._2;
+                    //key = hotelid + date
+                    String date = w._1.toString() + "," + w._2._1.getDate();
+                    //value = country + price + hotelName
+                    String value = w._2._1.getLoSa() + "," + w._2._1.getPrice() + "," +  w._2._2;
 
-                            return new Tuple2<>(
-                                    date,
-                                    value
-                            );
+                    return new Tuple2<>(
+                            date,
+                            value
+                    );
+
                 })
                 .reduceByKey(new Function2<String, String, String>() {
                     @Override
@@ -251,7 +269,26 @@ public class Driver {
                             return array1[0] + "," + array2[1] + "," + array2[2];
                         }
                     }
-                });
+                })
+                .map(s -> {
+
+                    //hotelid + date
+                    String[] array1 = s._1.split(",");
+                    String hotelid = array1[0];
+                    String date = array1[1];
+
+                    //losa + price + hotelname
+                    String[] array2 = s._2.split(",");
+                    Double price = Double.parseDouble(array2[1]);
+                    String losa = array2[0];
+                    String hotemname = array2[2];
+
+                    return new EnrichedItem(date,hotelid,losa,price,hotemname);
+
+                  }
+                )
+
+                ;
     }
 
 

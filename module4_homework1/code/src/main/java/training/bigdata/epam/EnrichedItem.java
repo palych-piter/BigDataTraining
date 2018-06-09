@@ -5,16 +5,18 @@ import java.io.Serializable;
 public class EnrichedItem implements Serializable {
 
     String date;
-    String motelId;
+    String motelName;
     String loSa;
     Double price;
+    String hotelName;
 
 
-    public EnrichedItem(String date, String motelId, String loSa, Double price){
+    public EnrichedItem(String date, String motelId, String loSa, Double price, String hotelName){
         this.date = date;
-        this.motelId = motelId;
+        this.motelName = motelId;
         this.loSa = loSa;
         this.price = price;
+        this.hotelName = hotelName;
     }
 
 
@@ -23,7 +25,7 @@ public class EnrichedItem implements Serializable {
     }
 
     public String getMotelId() {
-        return motelId;
+        return motelName;
     }
 
     public String getLoSa() {
@@ -33,5 +35,10 @@ public class EnrichedItem implements Serializable {
     public Double getPrice() {
         return price;
     }
+
+    public String getHotelName() {
+        return hotelName;
+    }
+
 
 }

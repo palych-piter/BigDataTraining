@@ -8,11 +8,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import scala.Tuple2;
-import training.bigdata.epam.BidError;
-import training.bigdata.epam.BidItem;
-import training.bigdata.epam.Driver;
+import training.bigdata.epam.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -23,8 +20,8 @@ public class DriverTest {
     SparkConf sparkConf;
     JavaSparkContext sc;
 
-    JavaRDD<String> finalResultActual;
-    JavaRDD<String> finalResultExpected;
+    JavaRDD<EnrichedItem> finalResultActual;
+    JavaRDD<EnrichedItem> finalResultExpected;
     JavaRDD<String> errorCountsActual;
 
     JavaRDD<BidError> errorCountsActualCustom;
@@ -40,8 +37,10 @@ public class DriverTest {
         // configure spark
         sc = Driver.establishSparkContext();
 
-        List<String> finalResultList = Arrays.asList("8,2015-10-18 12:00:00.0,US,1.726,Sheraton Moos' Motor Inn");
-        finalResultExpected = sc.parallelize(finalResultList);
+        List<EnrichedItem> enrichedList = ImmutableList.of(
+                new EnrichedItem("2015-10-18 12:00:00.0","8" ,"US",1.726,"Sheraton Moos' Motor Inn"));
+        finalResultExpected = sc.parallelize(enrichedList);
+
 
         List<BidError> bidErrorList = ImmutableList.of(
                 new BidError("05-21-11-2015","ERROR_ACCESS_DENIED", 1));
@@ -78,15 +77,16 @@ public class DriverTest {
         JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency =
                 explodedBidsToJoin.join(Driver.exchangeRateMap);
 
-        JavaPairRDD<Integer, String> convertedBids = Driver.convertBids(explodedBidsJoinedWithCurrency);
+        JavaRDD<BidConverted> convertedBids = Driver.convertBids(explodedBidsJoinedWithCurrency);
+        //convert to JavaPairRDD for joining, the key is motelid
+        JavaPairRDD<Integer, BidConverted> convertedBidsToJoin =
+                convertedBids.mapToPair( s-> new Tuple2<>(s.getMotelId(),s) );
 
-        JavaPairRDD<Integer, Tuple2<String, String>> explodedBidsJoinedWithHotels =
-                convertedBids.join(Driver.motels);
-
+        JavaPairRDD<Integer, Tuple2<BidConverted, String>> explodedBidsJoinedWithHotels =
+                convertedBidsToJoin.join(Driver.motels);
 
         finalResultActual = Driver.findMaximum(explodedBidsJoinedWithHotels)
-                .map(s-> s._1 + "," + s._2).filter(s-> s.split(",")[0].equals("8") && s.split(",")[1].equals("2015-10-18 12:00:00.0"));
-
+                .filter(s-> s.getMotelId().equals("8") && s.getDate().equals("2015-10-18 12:00:00.0") && s.getPrice().equals(1.726));
 
     }
 
@@ -126,10 +126,19 @@ public class DriverTest {
 
     @Test
     public void compare_final_data_sets() {
-        JavaRDDComparisons.assertRDDEquals(
-                finalResultExpected, finalResultActual);
-    }
+                assertEquals(
 
+                         finalResultExpected.collect().get(0).getDate() +
+                                 finalResultExpected.collect().get(0).getLoSa() +
+                                 finalResultExpected.collect().get(0).getMotelId() +
+                                 finalResultExpected.collect().get(0).getPrice().toString() ,
+                        finalResultExpected.collect().get(0).getDate() +
+                                finalResultExpected.collect().get(0).getLoSa() +
+                                finalResultExpected.collect().get(0).getMotelId() +
+                                finalResultExpected.collect().get(0).getPrice().toString()
+
+                );
+    }
 
 }
 
