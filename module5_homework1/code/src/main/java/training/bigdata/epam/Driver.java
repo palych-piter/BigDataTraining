@@ -4,8 +4,13 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.rdd.RDD;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import java.io.FileNotFoundException;
@@ -13,9 +18,17 @@ import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+
+import static org.apache.spark.sql.functions.col;
+import static training.bigdata.epam.ReadBidData.readBidData;
+import static training.bigdata.epam.ReadErrorData.readErrorData;
+import static training.bigdata.epam.ReadHotelData.readHotelData;
+import static training.bigdata.epam.ReadRateData.readRateData;
+import static training.bigdata.epam.SaveCSV.saveCsv;
 
 
 public class Driver {
@@ -25,13 +38,15 @@ public class Driver {
     public static DateFormat dateFormatInput = new SimpleDateFormat("HH-dd-MM-yyyy", Locale.ENGLISH);
 
     public static JavaRDD<String> bids;
-
-    public static RDD<String> bids_rdd;
-
     public static JavaPairRDD<String, String> exchangeRateMap;
     public static JavaPairRDD<Integer, String> motels;
 
-    public static JavaSparkContext sc;
+    public static Dataset<Row> bidDataFrame;
+    public static Dataset<Row> rateDataFrame;
+    public static Dataset<Row> hotelDataFrame;
+    public static Dataset<Row> errorDataFrame;
+
+    public static SparkSession sc;
 
     public static void main(String[] args) throws FileNotFoundException {
 
@@ -40,21 +55,20 @@ public class Driver {
         //establish Spark context
         sc = establishSparkContext();
 
-        //read the data
-        readData(sc);
+        //read the data, initialize initial datasets
+        //create a schema programmatically
+        bidDataFrame = readBidData(sc);
+        rateDataFrame = readRateData(sc);
+        hotelDataFrame = readHotelData(sc);
+        //use a custom class and reflection
+        errorDataFrame = readErrorData(sc);
 
         //Task 1 : count errors
-        JavaRDD<BidError> errorCountsMap = errorCountsCustom(bids);
+        errorDataFrame = errorDataFrame
+                .groupBy(col("date"), col("errorMessage"))
+                .agg(functions.max(col("count")).alias("count"));
         //save results
-        PrintWriter outputError = new PrintWriter("errors.txt");
-        for(BidError resultItem : errorCountsMap.collect()) {
-            outputError.println(
-                    resultItem.getDate() + "," +
-                            resultItem.getErrorMessage() + "," +
-                            resultItem.getCount().toString()
-            );
-        }
-        outputError.close();
+        saveCsv(errorDataFrame,"./output/", "Overwrite");
 
 
         //Task 3: explode the bids, convert to a pair rdd
@@ -99,68 +113,16 @@ public class Driver {
 
     }
 
-    public static JavaSparkContext establishSparkContext() {
-
-        // configure spark
-        SparkConf sparkConf = new SparkConf()
-                .setAppName("spark-core")
-                .setMaster("local[2]");
-
-        // start a spark context
-        return new JavaSparkContext(sparkConf);
-
-    }
-
-
-    public static void readData (JavaSparkContext sc){
-
-        // provide path to input text files
-        String bidsPath = Driver.class.getResource("/bids.txt").getPath();
-        String exchangeRatePath = Driver.class.getResource("/exchange_rate.txt").getPath();
-        String motelsPath = Driver.class.getResource("/motels.txt").getPath();
-
-        // read text files to RDD
-        bids = sc.textFile(bidsPath, 1);
-
-        //Task 2: load currency, prepare for joining
-        exchangeRateMap = sc.textFile(exchangeRatePath, 1)
-                .mapToPair(w -> new Tuple2<>(w.split(",")[0], w.split(",")[3]));
-        //Task 4: load hotels, prepare for joining
-        motels = sc.textFile(motelsPath, 1)
-                .mapToPair(h -> new Tuple2<>(Integer.parseInt(h.split(",")[0]), h.split(",")[1]));
-
-    }
-
-
-
-    public static JavaPairRDD<String, Integer> errorCounts(JavaRDD<String> bids) {
-        return bids
-                //filter only errors
-                .filter(s -> s.split(",")[2].contains("ERROR"))
-                //get only date and error message
-                .mapToPair(w -> new Tuple2<>(w.split(",")[1] + "," + w.split(",")[2], 1))
-                //reduce by date and error message
-                .reduceByKey((a, b) -> a + b);
-    }
-
-
-    public static JavaRDD<BidError> errorCountsCustom(JavaRDD<String> bids) {
-
-        return bids
-                //filter only errors
-                .filter(s -> s.split(",")[2].contains("ERROR"))
-                //get only date and error message
-                .mapToPair(w -> new Tuple2<>(w.split(",")[1] + "," + w.split(",")[2], 1))
-                //reduce by date and error message
-                .reduceByKey((a, b) -> a + b)
-                .map( s->  {
-                    String date = s._1.split(",")[0];
-                    String message = s._1.split(",")[1];
-                    Integer count = s._2;
-                        return new BidError(date, message,count);
-                })
+    public static SparkSession establishSparkContext() {
+        SparkSession sparkSession = SparkSession
+                .builder()
+                .master("local[2]")
+                .appName("hotel application")
+                .getOrCreate()
                 ;
+        return sparkSession;
     }
+
 
 
     public static JavaRDD<BidItem> explodeBids(JavaRDD<String> bids) {
@@ -294,6 +256,19 @@ public class Driver {
 
                 ;
     }
+
+    //replace nulls in dataset
+    public static Dataset<Row> replaceNulls(Dataset<Row> _dataset, String stringToReplace) {
+        String[] columnList = _dataset.columns();
+        //change column type to string and replace nulls
+        for (String columnName : columnList) {
+            _dataset = _dataset
+                    .withColumn(columnName, col(columnName).cast(DataTypes.StringType))
+                    .na().fill(stringToReplace, new String[]{columnName});
+        }
+        return _dataset;
+    }
+
 
 
 }
