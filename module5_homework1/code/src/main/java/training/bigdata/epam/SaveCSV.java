@@ -3,7 +3,6 @@ package training.bigdata.epam;
 import org.apache.spark.sql.Dataset;
 
 public class SaveCSV {
-
     public  static void saveCsv(Dataset datasetToSave, String path, String saveMode){
         datasetToSave
                 .coalesce(1)
@@ -14,7 +13,6 @@ public class SaveCSV {
                 .mode(saveMode)
                 .save(path);
     }
-
 }
 
 
