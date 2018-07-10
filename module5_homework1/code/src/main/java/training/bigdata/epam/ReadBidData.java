@@ -9,6 +9,7 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import training.bigdata.epam.ConstantsLoader.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +27,9 @@ public class ReadBidData {
                 .textFile(bidsPath, 1)
                 .toJavaRDD();
 
-        // The schema is encoded in a string
-        String bidSchema = "MotelID BidDate HU UK NL US MX AU CA CN KR BE I JP IN HN GY DE";
-
         // Generate the schema based on the string of schema
         List<StructField> fields = new ArrayList<>();
-        for (String fieldName : bidSchema.split(" ")) {
+        for (String fieldName : Constants.bidSchema.split(" ")) {
             StructField field = DataTypes.createStructField(fieldName, DataTypes.StringType, true);
             fields.add(field);
         }

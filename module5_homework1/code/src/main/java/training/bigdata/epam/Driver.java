@@ -2,36 +2,24 @@ package training.bigdata.epam;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.functions;
-import org.apache.spark.sql.types.DataTypes;
-import scala.Tuple2;
 
 import java.io.FileNotFoundException;
-import java.text.DateFormat;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Locale;
 
-import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.lit;
-import static org.apache.spark.sql.functions.round;
+import static org.apache.spark.sql.functions.*;
 import static training.bigdata.epam.ExplodeBids.explodeBids;
 import static training.bigdata.epam.ReadBidData.readBidData;
 import static training.bigdata.epam.ReadErrorData.readErrorData;
 import static training.bigdata.epam.ReadHotelData.readHotelData;
 import static training.bigdata.epam.ReadRateData.readRateData;
 import static training.bigdata.epam.SaveCSV.saveCsv;
+import static training.bigdata.epam.ConstantsLoader.Constants;
 
 
 public class Driver {
-
-    public static DecimalFormat numberFormat = new DecimalFormat("#0.000");
-    public static DateFormat dateFormatOutput = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S", Locale.ENGLISH);
-    public static DateFormat dateFormatInput = new SimpleDateFormat("HH-dd-MM-yyyy", Locale.ENGLISH);
 
     public static JavaRDD<String> bids;
     public static JavaPairRDD<String, String> exchangeRateMap;
@@ -40,6 +28,8 @@ public class Driver {
     public static Dataset<Row> bidDataFrame;
     public static Dataset<Row> bidDataFrameExploded;
     public static Dataset<Row> bidDataFrameConverted;
+    public static Dataset<Row> bidDataFrameFinal;
+    public static Dataset<Row> bidDataFrameGrouped;
 
     public static Dataset<Row> rateDataFrame;
     public static Dataset<Row> hotelDataFrame;
@@ -62,36 +52,69 @@ public class Driver {
         //use a custom class and reflection
         errorDataFrame = readErrorData(sc);
 
+
         //Task 1 : count errors
         errorDataFrame = errorDataFrame
                 .groupBy(col("date"), col("errorMessage"))
                 .agg(functions.sum(col("count")).alias("count"));
+
         //save results
         saveCsv(errorDataFrame, "./output/errors/", "Overwrite");
+
 
         //Task2/3 : explode the bids, convert the currency
         bidDataFrameExploded = explodeBids(bidDataFrame);
         bidDataFrameConverted = bidDataFrameExploded
-                .join(rateDataFrame, rateDataFrame.col("ValidFrom").equalTo(bidDataFrameExploded.col("date"))
+                .join(rateDataFrame, col("ValidFrom").equalTo(col("date"))
                         , "INNER")
                 .select(col("date"),
                         col("motelId"),
                         col("LoSa"),
                         lit(col("price").multiply(col("ExchangeRate")).alias("price"))
                 )
-                .withColumn("price",round(col("price"),4));
+                .withColumn("price", round(col("price"), 4))
+        ;
 
 
-        bidDataFrameConverted.show();
+        //Task 4/5 : enrich the data with hotel names + find maximum
 
+        //group to fins maximum value
+        bidDataFrameGrouped = bidDataFrameConverted
+                .groupBy(col("date"), col("motelId"))
+                .agg(max(col("price")).alias("price"))
+        ;
+
+
+        bidDataFrameFinal = bidDataFrameGrouped
+                //join to get all records that have the maximum value
+                .join(bidDataFrameConverted,
+                        bidDataFrameGrouped.col("date").equalTo(bidDataFrameConverted.col("date"))
+                                .and(bidDataFrameGrouped.col("motelId").equalTo(bidDataFrameConverted.col("motelId")))
+                                .and(bidDataFrameGrouped.col("price").equalTo(bidDataFrameConverted.col("price")))
+                )
+                .select(
+                        bidDataFrameGrouped.col("date"),
+                        bidDataFrameGrouped.col("motelId"),
+                        bidDataFrameGrouped.col("price"),
+                        col("LoSa")
+                )
+                //join to enrich the date with hotel names
+                .join(hotelDataFrame, col("motelId").equalTo(col("MotelID")), "inner"
+                )
+                .select(
+                        date_format(to_timestamp(col("date"),Constants.dateFormatInput),Constants.dateFormatOutput).alias("date"),
+                        col("MotelName"),
+                        col("LoSa"),
+                        col("price")
+                )
+        ;
 
         //save results
-        //saveCsv(bidDataFrameExploded,"./output/exploded/", "Overwrite");
+        saveCsv(bidDataFrameFinal, "./output/final/", "Overwrite");
 
         sc.close();
 
     }
-
 
     public static SparkSession establishSparkContext() {
         SparkSession sparkSession = SparkSession
@@ -99,95 +122,11 @@ public class Driver {
                 .master("local[2]")
                 .appName("hotel application")
                 .getOrCreate();
+
+        sparkSession.sql("set spark.sql.caseSensitive=true");
+
         return sparkSession;
     }
-
-
-    public static JavaRDD<BidConverted> convertBids(JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency) {
-
-        //convert to pair rdd
-        JavaRDD<BidConverted> convertedPriceRdd =
-                explodedBidsJoinedWithCurrency
-                        .map(s -> {
-
-                                    Integer motelid = Integer.parseInt(s._2._1.getMotelId());
-                                    String date = dateFormatOutput.format(dateFormatInput.parse(s._1));
-                                    String country = s._2._1.getLoSa();
-                                    Double convertedSum = Double.parseDouble(numberFormat.format(s._2._1.getPrice() * Double.parseDouble(s._2._2)));
-
-                                    return new BidConverted(date, motelid, country, convertedSum);
-
-                                }
-                        );
-
-        return convertedPriceRdd;
-
-    }
-
-
-    public static JavaRDD<EnrichedItem> findMaximum(JavaPairRDD<Integer, Tuple2<BidConverted, String>> bids) {
-
-        return bids
-                .mapToPair(w -> {
-
-                    //key = hotelid + date
-                    String date = w._1.toString() + "," + w._2._1.getDate();
-                    //value = country + price + hotelName
-                    String value = w._2._1.getLoSa() + "," + w._2._1.getPrice() + "," + w._2._2;
-
-                    return new Tuple2<>(
-                            date,
-                            value
-                    );
-
-                })
-                .reduceByKey(new Function2<String, String, String>() {
-                    @Override
-                    public String call(String v1, String v2) throws Exception {
-
-                        String[] array1 = v1.split(",");
-                        String[] array2 = v2.split(",");
-
-                        if (Double.parseDouble(array1[1]) > Double.parseDouble(array2[1])) {
-                            return array1[0] + "," + array1[1] + "," + array2[2];
-                        } else {
-                            return array1[0] + "," + array2[1] + "," + array2[2];
-                        }
-                    }
-                })
-                .map(s -> {
-
-                            //hotelid + date
-                            String[] array1 = s._1.split(",");
-                            String hotelid = array1[0];
-                            String date = array1[1];
-
-                            //losa + price + hotelname
-                            String[] array2 = s._2.split(",");
-                            Double price = Double.parseDouble(array2[1]);
-                            String losa = array2[0];
-                            String hotemname = array2[2];
-
-                            return new EnrichedItem(date, hotelid, losa, price, hotemname);
-
-                        }
-                )
-
-                ;
-    }
-
-    //replace nulls in dataset
-    public static Dataset<Row> replaceNulls(Dataset<Row> _dataset, String stringToReplace) {
-        String[] columnList = _dataset.columns();
-        //change column type to string and replace nulls
-        for (String columnName : columnList) {
-            _dataset = _dataset
-                    .withColumn(columnName, col(columnName).cast(DataTypes.StringType))
-                    .na().fill(stringToReplace, new String[]{columnName});
-        }
-        return _dataset;
-    }
-
 
 }
 

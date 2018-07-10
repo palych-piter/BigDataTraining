@@ -9,6 +9,7 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import training.bigdata.epam.ConstantsLoader.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,12 +26,9 @@ public class ReadRateData {
                 .textFile(exchangeRatePath, 1)
                 .toJavaRDD();
 
-        // The schema is encoded in a string
-        String rateSchema = "ValidFrom CurrencyName CurrencyCode ExchangeRate";
-
         // Generate the schema based on the string of schema
         List<StructField> fields = new ArrayList<>();
-        for (String fieldName : rateSchema.split(" ")) {
+        for (String fieldName : Constants.rateSchema.split(" ")) {
             StructField field = DataTypes.createStructField(fieldName, DataTypes.StringType, true);
             fields.add(field);
         }
