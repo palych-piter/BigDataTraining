@@ -4,14 +4,14 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import training.bigdata.epam.ConstantsLoader.Constants;
+
 
 public class ReadErrorData {
 
-    public static Dataset<Row> readErrorData(SparkSession spark) {
+    public static Dataset<Row> readErrorData(SparkSession spark, String fileName) {
 
         // provide path to input text files
-        String bidsPath = Driver.class.getResource("/bids.txt").getPath();
+        String bidsPath = Driver.class.getResource("/" + fileName).getPath();
 
         // read bid text files to RDD
         JavaRDD<BidError> errorRDD = spark.sparkContext()

@@ -42,102 +42,30 @@ public class Driver {
         sc = establishSparkContext();
 
         //read the data, initialize initial datasets
-
         //create a schema programmatically
         bidDataFrame = readBidData(sc,"bids.txt");
         rateDataFrame = readRateData(sc);
         hotelDataFrame = readHotelData(sc);
-
         //use a custom class and reflection
-        errorDataFrame = readErrorData(sc);
+        errorDataFrame = readErrorData(sc,"bids.txt");
 
 
         //Task 1 : count errors
-        errorDataFrame = errorDataFrame
-                .groupBy(col("date"), col("errorMessage"))
-                .agg(functions.sum(col("count")).alias("count"));
-
-        //save results
+        errorDataFrame = countErrors(errorDataFrame);
         saveCsv(errorDataFrame, "./output/errors/", "Overwrite");
-
 
         //Task2/3 : explode the bids, convert the currency
         bidDataFrameExploded = explodeBids(bidDataFrame);
-        bidDataFrameConverted = bidDataFrameExploded
-                .join(rateDataFrame, col("ValidFrom").equalTo(col("date"))
-                        , "INNER")
-                .select(col("date"),
-                        col("motelId"),
-                        col("LoSa"),
-                        lit(col("price").multiply(col("ExchangeRate")).alias("price"))
-                )
-                .withColumn("price", round(col("price"), 4))
-        ;
+        bidDataFrameConverted = convertCurrency(bidDataFrameExploded, rateDataFrame);
 
-
-        //Task 4/5 : enrich the data with hotel names + find maximum
-
-
-
-        //find maximum - no windowing approach
-        bidDataFrameGrouped = bidDataFrameConverted
-                .groupBy(col("date"), col("motelId"))
-                .agg(max(col("price")).alias("price"))
-        ;
-
-        bidDataFrameFinal = bidDataFrameGrouped
-                //join to get all records that have the maximum value
-                .join(bidDataFrameConverted,
-                        bidDataFrameGrouped.col("date").equalTo(bidDataFrameConverted.col("date"))
-                                .and(bidDataFrameGrouped.col("motelId").equalTo(bidDataFrameConverted.col("motelId")))
-                                .and(bidDataFrameGrouped.col("price").equalTo(bidDataFrameConverted.col("price")))
-                )
-                .select(
-                        bidDataFrameGrouped.col("date"),
-                        bidDataFrameGrouped.col("motelId"),
-                        bidDataFrameGrouped.col("price"),
-                        col("LoSa")
-                )
-                //join to enrich the date with hotel names
-                .join(hotelDataFrame, col("motelId").equalTo(col("MotelID")), "inner"
-                )
-                .select(
-                        date_format(to_timestamp(col("date"), Constants.dateFormatInput), Constants.dateFormatOutput).alias("date"),
-                        col("MotelName"),
-                        col("LoSa"),
-                        col("price")
-                )
-        ;
-
-
-        //find maximum - windowing approach
-        WindowSpec window = Window.partitionBy(col("date"), col("motelId")).orderBy(col("date"), col("motelId"),col("price").desc());
-        Column maxPrice = functions.first("price").over(window);
-        bidDataFrameFinal = bidDataFrameConverted
-                //find maximum
-                .select(
-                        col("date"),
-                        col("motelId"),
-                        col("LoSa"),
-                        maxPrice.alias("max_price"))
-                .filter(col("price").equalTo(col("max_price")))
-                .join(hotelDataFrame, col("motelId").equalTo(col("MotelID")), "inner"
-                )
-                //join with motels to enrich with motel names
-                .select(
-                        date_format(to_timestamp(col("date"), Constants.dateFormatInput), Constants.dateFormatOutput).alias("date"),
-                        col("MotelName"),
-                        col("LoSa"),
-                        col("max_price")
-                )
-        ;
-
-        //save results
+        //Task 4/5 : find maximum + enrich the data with hotel names
+        bidDataFrameFinal = findMaxPrice(bidDataFrameConverted, hotelDataFrame);
         saveCsv(bidDataFrameFinal, "./output/final/", "Overwrite");
 
         sc.close();
 
     }
+
 
     public static SparkSession establishSparkContext() {
         SparkSession sparkSession = SparkSession
@@ -149,6 +77,49 @@ public class Driver {
         sparkSession.sql("set spark.sql.caseSensitive=true");
 
         return sparkSession;
+    }
+
+
+    public static Dataset<Row> countErrors(Dataset<Row> inputDataFrame) {
+        return errorDataFrame = inputDataFrame
+                .groupBy(col("date"), col("errorMessage"))
+                .agg(functions.sum(col("count")).alias("count"));
+    }
+
+
+    public static Dataset<Row> convertCurrency(Dataset<Row> inputDataFrame, Dataset<Row> ratesDf) {
+        return  inputDataFrame.join(ratesDf, col("ValidFrom").equalTo(col("date"))
+                , "INNER")
+                .select(col("date"),
+                        col("motelId"),
+                        col("LoSa"),
+                        lit(col("price").multiply(col("ExchangeRate")).alias("price"))
+                )
+                .withColumn("price", round(col("price"), 4));
+    }
+
+
+    public static Dataset<Row> findMaxPrice(Dataset<Row> inputDataFrame, Dataset<Row> hotelDf ) {
+        WindowSpec window = Window.partitionBy(col("date"), col("motelId")).orderBy(col("date"), col("motelId"),col("price").desc());
+        Column maxPrice = functions.first("price").over(window);
+        return inputDataFrame
+                //find maximum
+                .select(
+                        col("date"),
+                        col("motelId"),
+                        col("LoSa"),
+                        maxPrice.alias("max_price"))
+                .filter(col("price").equalTo(col("max_price")))
+                .join(hotelDf, col("motelId").equalTo(col("MotelID")), "inner"
+                )
+                //join with motels to enrich with motel names
+                .select(
+                        date_format(to_timestamp(col("date"), Constants.dateFormatInput), Constants.dateFormatOutput).alias("date"),
+                        col("MotelName"),
+                        col("LoSa"),
+                        col("max_price")
+                )
+        ;
     }
 
 }

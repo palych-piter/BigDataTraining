@@ -1,7 +1,5 @@
-import com.google.common.collect.ImmutableList;
+
 import com.holdenkarau.spark.testing.JavaRDDComparisons;
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
@@ -10,75 +8,48 @@ import org.apache.spark.sql.SparkSession;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import scala.Tuple2;
-import training.bigdata.epam.*;
+import training.bigdata.epam.Driver;
 
+import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static training.bigdata.epam.Driver.convertCurrency;
+import static training.bigdata.epam.Driver.findMaxPrice;
+import static training.bigdata.epam.ExplodeBids.explodeBids;
 import static training.bigdata.epam.ReadBidData.readBidData;
+import static training.bigdata.epam.ReadErrorData.readErrorData;
+import static training.bigdata.epam.ReadHotelData.readHotelData;
+import static training.bigdata.epam.ReadRateData.readRateData;
 
 
 public class DriverTest {
 
     SparkSession sc;
-
-    JavaRDD<EnrichedItem> finalResultActual;
-    JavaRDD<EnrichedItem> finalResultExpected;
-    JavaRDD<String> errorCountsActual;
-
-    JavaRDD<BidError> errorCountsActualCustom;
-    JavaRDD<BidError> errorCountsExpected;
-
-    JavaRDD<BidItem> actualExplodedBids;
-    JavaRDD<BidItem> expectedExplodedBids;
-
     Dataset<Row> bidDataFrame;
-
+    Dataset<Row> errorDataFrame;
+    Dataset<Row> errorDataFrameGrouped;
+    Dataset<Row> rateDataFrame;
+    Dataset<Row> hotelDataFrame;
+    Dataset<Row> bidDataFrameExploded;
+    Dataset<Row> bidDataFrameConverted;
+    Dataset<Row> bidDataFrameFinal;
 
     @Before
-    public void initialize()  {
+    public void initialize() {
 
         // configure spark
         sc = Driver.establishSparkContext();
-        
+
         //read the test data
-        bidDataFrame = readBidData(sc,"bids_test.txt");
+        bidDataFrame = readBidData(sc, "bids_test.txt");
+        errorDataFrame = readErrorData(sc, "bids_test.txt");
+        rateDataFrame = readRateData(sc);
+        hotelDataFrame = readHotelData(sc);
 
-
-        errorCountsActualCustom = Driver.errorCountsCustom(Driver.bids)
-                .filter(s-> {
-                                return s.getDate().equals("05-21-11-2015")
-                                    && s.getCount().equals(1)
-                                    && s.getErrorMessage().equals("ERROR_ACCESS_DENIED");
-                            }
-                        );
-
-        JavaRDD<BidItem> explodedBids = Driver.explodeBids(Driver.bids);
-        actualExplodedBids = explodedBids
-                .filter(s-> {
-                    return s.getDate().equals("11-05-08-2016")
-                        && s.getMotelId().equals("0000002")
-                        && s.getLoSa().equals("US")
-                        && s.getPrice().equals(0.68);
-                });
-
-
-        JavaPairRDD<String, BidItem> explodedBidsToJoin =
-                explodedBids.mapToPair( s-> new Tuple2<>(s.getDate(),s) );
-        JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency =
-                explodedBidsToJoin.join(Driver.exchangeRateMap);
-
-        JavaRDD<BidConverted> convertedBids = Driver.convertBids(explodedBidsJoinedWithCurrency);
-        //convert to JavaPairRDD for joining, the key is motelid
-        JavaPairRDD<Integer, BidConverted> convertedBidsToJoin =
-                convertedBids.mapToPair( s-> new Tuple2<>(s.getMotelId(),s) );
-
-        JavaPairRDD<Integer, Tuple2<BidConverted, String>> explodedBidsJoinedWithHotels =
-                convertedBidsToJoin.join(Driver.motels);
-
-        finalResultActual = Driver.findMaximum(explodedBidsJoinedWithHotels)
-                .filter(s-> s.getMotelId().equals("8") && s.getDate().equals("2015-10-18 12:00:00.0") && s.getPrice().equals(1.726));
+        errorDataFrameGrouped = Driver.countErrors(errorDataFrame);
+        bidDataFrameExploded = explodeBids(bidDataFrame);
+        bidDataFrameConverted = convertCurrency(bidDataFrameExploded,rateDataFrame);
+        bidDataFrameFinal = findMaxPrice(bidDataFrameConverted,hotelDataFrame);
 
     }
 
@@ -87,50 +58,77 @@ public class DriverTest {
         sc.close();
     }
 
-
     @Test
     public void compare_error_counts() {
-                assertEquals(
-                        errorCountsExpected.collect().get(0).getDate() +
-                                errorCountsExpected.collect().get(0).getErrorMessage() +
-                                errorCountsExpected.collect().get(0).getCount().toString() ,
-                        errorCountsActualCustom.collect().get(0).getDate() +
-                              errorCountsActualCustom.collect().get(0).getErrorMessage() +
-                              errorCountsActualCustom.collect().get(0).getCount().toString()
-                );
+        //create expected dataset
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(sc.sparkContext());
+        List<String> listExpected = Arrays.asList("22-04-08-2016,ERROR_INCONSISTENT_DATA,2");
+        JavaRDD<String> errorDataExpected = jsc.parallelize(listExpected, 1);
+
+        //convert actual dataset to JavaRDD<String> to compare
+        JavaRDD<String> errorDataActual = errorDataFrameGrouped.toJavaRDD()
+                .map((Row row) -> {
+                    return row.get(0).toString() + "," +
+                           row.get(1).toString() + "," +
+                           row.get(2).toString();
+                });
+        JavaRDDComparisons.assertRDDEquals(errorDataExpected, errorDataActual);
     }
 
     @Test
     public void compare_exployed_bids() {
-                assertEquals(
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(sc.sparkContext());
+        List<String> listExpected = Arrays.asList("21-04-08-2016,0000004,MX,1.79","21-04-08-2016,0000004,CA,0.00","21-04-08-2016,0000004,US,1.60");
+        JavaRDD<String> explodedBidsDataExpected = jsc.parallelize(listExpected, 1);
 
-                        expectedExplodedBids.collect().get(0).getDate() +
-                                expectedExplodedBids.collect().get(0).getLoSa() +
-                                expectedExplodedBids.collect().get(0).getMotelId() +
-                                expectedExplodedBids.collect().get(0).getPrice().toString() ,
-                        actualExplodedBids.collect().get(0).getDate() +
-                                actualExplodedBids.collect().get(0).getLoSa() +
-                                actualExplodedBids.collect().get(0).getMotelId() +
-                                actualExplodedBids.collect().get(0).getPrice().toString()
-
-                );
+        //convert actual dataset to JavaRDD<String> to compare
+        JavaRDD<String> errorDataActual = bidDataFrameExploded.toJavaRDD()
+                .map((Row row) -> {
+                    return row.get(0).toString() + "," +
+                           row.get(1).toString() + "," +
+                           row.get(2).toString() + "," +
+                           row.get(3).toString();
+                });
+        JavaRDDComparisons.assertRDDEquals(explodedBidsDataExpected, errorDataActual);
     }
+
+
+    @Test
+    public void compare_converted_bids() {
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(sc.sparkContext());
+        List<String> listExpected = Arrays.asList("21-04-08-2016,0000004,MX,1.6701","21-04-08-2016,0000004,CA,0.0","21-04-08-2016,0000004,US,1.4928");
+        JavaRDD<String> explodedBidsDataExpected = jsc.parallelize(listExpected, 1);
+
+        //convert actual dataset to JavaRDD<String> to compare
+        JavaRDD<String> errorDataActual = bidDataFrameConverted.toJavaRDD()
+                .map((Row row) -> {
+                    return row.get(0).toString() + "," +
+                            row.get(1).toString() + "," +
+                            row.get(2).toString() + "," +
+                            row.get(3).toString();
+                });
+        JavaRDDComparisons.assertRDDEquals(explodedBidsDataExpected, errorDataActual);
+    }
+
+
 
     @Test
     public void compare_final_data_sets() {
-                assertEquals(
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(sc.sparkContext());
+        List<String> listExpected = Arrays.asList("2016-08-04 21:00:00.0,Majestic Big River Elegance Plaza,MX,1.6701");
+        JavaRDD<String> explodedBidsDataExpected = jsc.parallelize(listExpected, 1);
 
-                         finalResultExpected.collect().get(0).getDate() +
-                                 finalResultExpected.collect().get(0).getLoSa() +
-                                 finalResultExpected.collect().get(0).getMotelId() +
-                                 finalResultExpected.collect().get(0).getPrice().toString() ,
-                        finalResultExpected.collect().get(0).getDate() +
-                                finalResultExpected.collect().get(0).getLoSa() +
-                                finalResultExpected.collect().get(0).getMotelId() +
-                                finalResultExpected.collect().get(0).getPrice().toString()
-
-                );
+        //convert actual dataset to JavaRDD<String> to compare
+        JavaRDD<String> errorDataActual = bidDataFrameFinal.toJavaRDD()
+                .map((Row row) -> {
+                    return row.get(0).toString() + "," +
+                            row.get(1).toString() + "," +
+                            row.get(2).toString() + "," +
+                            row.get(3).toString();
+                });
+        JavaRDDComparisons.assertRDDEquals(explodedBidsDataExpected, errorDataActual);
     }
+
 
 }
 
