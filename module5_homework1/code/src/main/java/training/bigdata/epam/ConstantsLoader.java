@@ -1,9 +1,5 @@
 package training.bigdata.epam;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Locale;
-
 public class ConstantsLoader {
     public static final class Constants {
         public static String dateFormatOutput = "yyyy-MM-dd HH:mm:ss.S";

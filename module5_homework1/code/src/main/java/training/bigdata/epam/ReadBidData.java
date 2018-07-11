@@ -17,10 +17,10 @@ import java.util.List;
 public class ReadBidData {
 
 
-    public static Dataset<Row> readBidData (SparkSession spark){
+    public static Dataset<Row> readBidData (SparkSession spark, String fileName){
 
         // provide path to input text files
-        String bidsPath = Driver.class.getResource("/bids.txt").getPath();
+        String bidsPath = Driver.class.getResource("/" + fileName).getPath();
 
         // read bid text files to RDD
         JavaRDD<String> bidRDD = spark.sparkContext()

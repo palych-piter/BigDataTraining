@@ -2,21 +2,20 @@ package training.bigdata.epam;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.expressions.Window;
+import org.apache.spark.sql.expressions.WindowSpec;
 
 import java.io.FileNotFoundException;
 
 import static org.apache.spark.sql.functions.*;
+import static training.bigdata.epam.ConstantsLoader.Constants;
 import static training.bigdata.epam.ExplodeBids.explodeBids;
 import static training.bigdata.epam.ReadBidData.readBidData;
 import static training.bigdata.epam.ReadErrorData.readErrorData;
 import static training.bigdata.epam.ReadHotelData.readHotelData;
 import static training.bigdata.epam.ReadRateData.readRateData;
 import static training.bigdata.epam.SaveCSV.saveCsv;
-import static training.bigdata.epam.ConstantsLoader.Constants;
 
 
 public class Driver {
@@ -45,7 +44,7 @@ public class Driver {
         //read the data, initialize initial datasets
 
         //create a schema programmatically
-        bidDataFrame = readBidData(sc);
+        bidDataFrame = readBidData(sc,"bids.txt");
         rateDataFrame = readRateData(sc);
         hotelDataFrame = readHotelData(sc);
 
@@ -78,12 +77,13 @@ public class Driver {
 
         //Task 4/5 : enrich the data with hotel names + find maximum
 
-        //group to fins maximum value
+
+
+        //find maximum - no windowing approach
         bidDataFrameGrouped = bidDataFrameConverted
                 .groupBy(col("date"), col("motelId"))
                 .agg(max(col("price")).alias("price"))
         ;
-
 
         bidDataFrameFinal = bidDataFrameGrouped
                 //join to get all records that have the maximum value
@@ -102,10 +102,33 @@ public class Driver {
                 .join(hotelDataFrame, col("motelId").equalTo(col("MotelID")), "inner"
                 )
                 .select(
-                        date_format(to_timestamp(col("date"),Constants.dateFormatInput),Constants.dateFormatOutput).alias("date"),
+                        date_format(to_timestamp(col("date"), Constants.dateFormatInput), Constants.dateFormatOutput).alias("date"),
                         col("MotelName"),
                         col("LoSa"),
                         col("price")
+                )
+        ;
+
+
+        //find maximum - windowing approach
+        WindowSpec window = Window.partitionBy(col("date"), col("motelId")).orderBy(col("date"), col("motelId"),col("price").desc());
+        Column maxPrice = functions.first("price").over(window);
+        bidDataFrameFinal = bidDataFrameConverted
+                //find maximum
+                .select(
+                        col("date"),
+                        col("motelId"),
+                        col("LoSa"),
+                        maxPrice.alias("max_price"))
+                .filter(col("price").equalTo(col("max_price")))
+                .join(hotelDataFrame, col("motelId").equalTo(col("MotelID")), "inner"
+                )
+                //join with motels to enrich with motel names
+                .select(
+                        date_format(to_timestamp(col("date"), Constants.dateFormatInput), Constants.dateFormatOutput).alias("date"),
+                        col("MotelName"),
+                        col("LoSa"),
+                        col("max_price")
                 )
         ;
 

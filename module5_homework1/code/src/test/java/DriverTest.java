@@ -4,6 +4,9 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,12 +16,12 @@ import training.bigdata.epam.*;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static training.bigdata.epam.ReadBidData.readBidData;
 
 
 public class DriverTest {
 
-    SparkConf sparkConf;
-    JavaSparkContext sc;
+    SparkSession sc;
 
     JavaRDD<EnrichedItem> finalResultActual;
     JavaRDD<EnrichedItem> finalResultExpected;
@@ -30,29 +33,18 @@ public class DriverTest {
     JavaRDD<BidItem> actualExplodedBids;
     JavaRDD<BidItem> expectedExplodedBids;
 
+    Dataset<Row> bidDataFrame;
+
 
     @Before
     public void initialize()  {
 
         // configure spark
         sc = Driver.establishSparkContext();
+        
+        //read the test data
+        bidDataFrame = readBidData(sc,"bids_test.txt");
 
-        List<EnrichedItem> enrichedList = ImmutableList.of(
-                new EnrichedItem("2015-10-18 12:00:00.0","8" ,"US",1.726,"Sheraton Moos' Motor Inn"));
-        finalResultExpected = sc.parallelize(enrichedList);
-
-
-        List<BidError> bidErrorList = ImmutableList.of(
-                new BidError("05-21-11-2015","ERROR_ACCESS_DENIED", 1));
-        errorCountsExpected = sc.parallelize(bidErrorList);
-
-
-        List<BidItem> bidItemList = ImmutableList.of(
-                new BidItem("11-05-08-2016","0000002","US",0.68));
-        expectedExplodedBids = sc.parallelize(bidItemList);
-
-
-        Driver.readData(sc);
 
         errorCountsActualCustom = Driver.errorCountsCustom(Driver.bids)
                 .filter(s-> {
