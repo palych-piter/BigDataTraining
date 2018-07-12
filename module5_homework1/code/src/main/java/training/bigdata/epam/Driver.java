@@ -1,7 +1,5 @@
 package training.bigdata.epam;
 
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.expressions.Window;
 import org.apache.spark.sql.expressions.WindowSpec;
@@ -11,7 +9,7 @@ import java.io.FileNotFoundException;
 import static org.apache.spark.sql.functions.*;
 import static training.bigdata.epam.ConstantsLoader.Constants;
 import static training.bigdata.epam.ExplodeBids.explodeBids;
-import static training.bigdata.epam.ReadBidData.readBidData;
+import static training.bigdata.epam.ReadBidDataPar.readBidDataPar;
 import static training.bigdata.epam.ReadErrorData.readErrorData;
 import static training.bigdata.epam.ReadHotelData.readHotelData;
 import static training.bigdata.epam.ReadRateData.readRateData;
@@ -20,15 +18,10 @@ import static training.bigdata.epam.SaveCSV.saveCsv;
 
 public class Driver {
 
-    public static JavaRDD<String> bids;
-    public static JavaPairRDD<String, String> exchangeRateMap;
-    public static JavaPairRDD<Integer, String> motels;
-
     public static Dataset<Row> bidDataFrame;
     public static Dataset<Row> bidDataFrameExploded;
     public static Dataset<Row> bidDataFrameConverted;
     public static Dataset<Row> bidDataFrameFinal;
-    public static Dataset<Row> bidDataFrameGrouped;
 
     public static Dataset<Row> rateDataFrame;
     public static Dataset<Row> hotelDataFrame;
@@ -41,9 +34,20 @@ public class Driver {
         //establish Spark context
         sc = establishSparkContext();
 
+        //convert bids to a sequence file
+        BidConvertToSeq.convertBid(sc,"bids.txt");
+        //convert bids to a parquet file
+        BidConvertToPar.convertBid(sc,"bids.txt");
+
+
         //read the data, initialize initial datasets
         //create a schema programmatically
-        bidDataFrame = readBidData(sc,"bids.txt");
+        //read bids from a parquet file
+        bidDataFrame = readBidDataPar(sc,"./output/bids.parquet");
+        //read bids from a sequence file
+        //bidDataFrame = readBidDataSeq(sc,"./output/bids.seq");
+        //bidDataFrame = readBidData(sc,"bids.txt");
+
         rateDataFrame = readRateData(sc);
         hotelDataFrame = readHotelData(sc);
         //use a custom class and reflection

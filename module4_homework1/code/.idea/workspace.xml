@@ -53,11 +53,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Driver.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="Driver.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="355">
-              <caret line="231" column="86" lean-forward="false" selection-start-line="231" selection-start-column="34" selection-end-line="231" selection-end-column="86" />
+            <state relative-caret-position="5535">
+              <caret line="290" column="0" lean-forward="false" selection-start-line="290" selection-start-column="0" selection-end-line="290" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -125,10 +125,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="DriverTest.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="DriverTest.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/java/DriverTest.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1792">
+            <state relative-caret-position="-1776">
               <caret line="56" column="66" lean-forward="false" selection-start-line="56" selection-start-column="66" selection-end-line="56" selection-end-column="66" />
               <folding>
                 <element signature="imports" expanded="true" />
@@ -170,6 +170,7 @@
       <find>2015-10-11 21:00:00.0,4</find>
       <find>2</find>
       <find>,2</find>
+      <find>JavaPair</find>
     </findStrings>
   </component>
   <component name="GradleLocalSettings">
@@ -515,8 +516,8 @@
         <option value="$PROJECT_DIR$/src/main/java/training/bigdata/epam/EnrichedItem.java" />
         <option value="$PROJECT_DIR$/src/main/java/training/bigdata/epam/BidConverted.java" />
         <option value="$PROJECT_DIR$/src/test/java/DriverTest.java" />
-        <option value="$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java" />
         <option value="$PROJECT_DIR$/final.txt" />
+        <option value="$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java" />
       </list>
     </option>
   </component>
@@ -819,7 +820,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-9" y="-9" width="1938" height="1168" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -906,7 +906,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java</url>
-          <line>240</line>
+          <line>237</line>
           <properties />
           <option name="timeStamp" value="120" />
         </line-breakpoint>
@@ -1194,16 +1194,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="355">
-          <caret line="231" column="86" lean-forward="false" selection-start-line="231" selection-start-column="34" selection-end-line="231" selection-end-column="86" />
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/training/bigdata/epam/BidError.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-32">
@@ -1222,8 +1212,18 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/DriverTest.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1792">
+        <state relative-caret-position="-1776">
           <caret line="56" column="66" lean-forward="false" selection-start-line="56" selection-start-column="66" selection-end-line="56" selection-end-column="66" />
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/training/bigdata/epam/Driver.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="5535">
+          <caret line="290" column="0" lean-forward="false" selection-start-line="290" selection-start-column="0" selection-end-line="290" selection-end-column="0" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>

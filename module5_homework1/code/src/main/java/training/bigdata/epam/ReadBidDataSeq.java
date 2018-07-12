@@ -1,6 +1,9 @@
 package training.bigdata.epam;
 
+import org.apache.hadoop.io.Text;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -9,23 +12,28 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import scala.Tuple2;
 import training.bigdata.epam.ConstantsLoader.Constants;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReadBidData {
+public class ReadBidDataSeq implements Serializable {
 
+    public static Dataset<Row> readBidDataSeq(SparkSession spark, String fileName) {
 
-    public static Dataset<Row> readBidData (SparkSession spark, String fileName){
-
-        // provide path to input text files
-        String bidsPath = Driver.class.getResource("/" + fileName).getPath();
+        //get JavaSparkContext
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(spark.sparkContext());
 
         // read bid text files to RDD
-        JavaRDD<String> bidRDD = spark.sparkContext()
-                .textFile(bidsPath, 1)
-                .toJavaRDD();
+        JavaPairRDD<Text, Text> bidPairRDD = jsc.sequenceFile
+                (fileName, Text.class, Text.class, 1);
+
+        //convert to not pair RDD
+        JavaRDD<String> bidRDD = bidPairRDD.map((Tuple2<Text, Text> s) -> {
+            return s._1.toString() + s._2.toString();
+        });
 
         // Generate a schema based on the schema string
         List<StructField> fields = new ArrayList<>();
@@ -40,7 +48,7 @@ public class ReadBidData {
                         .map(new Function<String, Row>() {
                             @Override
                             public Row call(String record) throws Exception {
-                                String[] attributes = record.split(",",-1);
+                                String[] attributes = record.split(",", -1);
                                 return RowFactory.create(
                                         attributes[0],
                                         attributes[1],
@@ -69,4 +77,7 @@ public class ReadBidData {
 
     }
 
+
 }
+
+

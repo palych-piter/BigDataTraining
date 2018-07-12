@@ -1,6 +1,7 @@
 package training.bigdata.epam;
 
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -9,27 +10,28 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import training.bigdata.epam.ConstantsLoader.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReadBidData {
+public class BidConvertToPar {
 
+    public static void convertBid(SparkSession spark, String fileName) {
 
-    public static Dataset<Row> readBidData (SparkSession spark, String fileName){
-
-        // provide path to input text files
+        //provide path to input text files
         String bidsPath = Driver.class.getResource("/" + fileName).getPath();
 
-        // read bid text files to RDD
-        JavaRDD<String> bidRDD = spark.sparkContext()
+        //get JavaSparkContext
+        JavaSparkContext jsc = JavaSparkContext.fromSparkContext(spark.sparkContext());
+
+        JavaRDD<String> bidRDD = jsc
                 .textFile(bidsPath, 1)
-                .toJavaRDD();
+                .filter(s -> !s.split(",")[2].contains("ERROR"));
+
 
         // Generate a schema based on the schema string
         List<StructField> fields = new ArrayList<>();
-        for (String fieldName : Constants.bidSchema.split(" ")) {
+        for (String fieldName : ConstantsLoader.Constants.bidSchema.split(" ")) {
             StructField field = DataTypes.createStructField(fieldName, DataTypes.StringType, true);
             fields.add(field);
         }
@@ -64,9 +66,10 @@ public class ReadBidData {
                             }
                         });
 
-        // Apply the schema to the RDD
-        return spark.createDataFrame(rowRDD, schema);
+
+        Dataset<Row> _output = spark.createDataFrame(rowRDD, schema);
+
+        SaveParquet.saveParquet(_output,"./output/bids.parquet", "Overwrite");
 
     }
-
 }

@@ -42,6 +42,7 @@ public class DriverTest {
 
         //read the test data
         bidDataFrame = readBidData(sc, "bids_test.txt");
+
         errorDataFrame = readErrorData(sc, "bids_test.txt");
         rateDataFrame = readRateData(sc);
         hotelDataFrame = readHotelData(sc);

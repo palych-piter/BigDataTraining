@@ -47,7 +47,7 @@ public class Driver {
         JavaRDD<BidError> errorCountsMap = errorCountsCustom(bids);
         //save results
         PrintWriter outputError = new PrintWriter("errors.txt");
-        for(BidError resultItem : errorCountsMap.collect()) {
+        for (BidError resultItem : errorCountsMap.collect()) {
             outputError.println(
                     resultItem.getDate() + "," +
                             resultItem.getErrorMessage() + "," +
@@ -63,7 +63,7 @@ public class Driver {
         //join with currency
         //convert to JavaPairRDD for joining, the key is date
         JavaPairRDD<String, BidItem> explodedBidsToJoin =
-                explodedBids.mapToPair( s-> new Tuple2<>(s.getDate(),s) );
+                explodedBids.mapToPair(s -> new Tuple2<>(s.getDate(), s));
 
         JavaPairRDD<String, Tuple2<BidItem, String>> explodedBidsJoinedWithCurrency =
                 explodedBidsToJoin.join(exchangeRateMap);
@@ -72,7 +72,7 @@ public class Driver {
         JavaRDD<BidConverted> convertedBids = convertBids(explodedBidsJoinedWithCurrency);
         //convert to JavaPairRDD for joining, the key is motelid
         JavaPairRDD<Integer, BidConverted> convertedBidsToJoin =
-                convertedBids.mapToPair( s-> new Tuple2<>(s.getMotelId(),s) );
+                convertedBids.mapToPair(s -> new Tuple2<>(s.getMotelId(), s));
 
         //Task 5: join with hotels
         JavaPairRDD<Integer, Tuple2<BidConverted, String>> explodedBidsJoinedWithHotels =
@@ -84,13 +84,13 @@ public class Driver {
         //save the final results
         //finalResult.saveAsTextFile(System.getProperty("user.dir") + "/output/final-result");
         PrintWriter outputFinal = new PrintWriter("final.txt");
-        for(EnrichedItem resultItem : finalResult.collect()){
+        for (EnrichedItem resultItem : finalResult.collect()) {
             outputFinal.println(
                     resultItem.getDate() + "," +
-                    resultItem.getMotelId() + "," +
-                    resultItem.getHotelName() + "," +
-                    resultItem.getPrice() + "," +
-                    resultItem.getLoSa()
+                            resultItem.getMotelId() + "," +
+                            resultItem.getHotelName() + "," +
+                            resultItem.getPrice() + "," +
+                            resultItem.getLoSa()
             );
         }
         outputFinal.close();
@@ -112,7 +112,7 @@ public class Driver {
     }
 
 
-    public static void readData (JavaSparkContext sc){
+    public static void readData(JavaSparkContext sc) {
 
         // provide path to input text files
         String bidsPath = Driver.class.getResource("/bids.txt").getPath();
@@ -130,7 +130,6 @@ public class Driver {
                 .mapToPair(h -> new Tuple2<>(Integer.parseInt(h.split(",")[0]), h.split(",")[1]));
 
     }
-
 
 
     public static JavaPairRDD<String, Integer> errorCounts(JavaRDD<String> bids) {
@@ -153,11 +152,11 @@ public class Driver {
                 .mapToPair(w -> new Tuple2<>(w.split(",")[1] + "," + w.split(",")[2], 1))
                 //reduce by date and error message
                 .reduceByKey((a, b) -> a + b)
-                .map( s->  {
+                .map(s -> {
                     String date = s._1.split(",")[0];
                     String message = s._1.split(",")[1];
                     Integer count = s._2;
-                        return new BidError(date, message,count);
+                    return new BidError(date, message, count);
                 })
                 ;
     }
@@ -172,8 +171,8 @@ public class Driver {
                 .map(s -> {
                             String[] array = s.split(",");
 
-                                    //hotel_id
-                            return  array[0] + "," +
+                            //hotel_id
+                            return array[0] + "," +
                                     //date
                                     array[1] + "," +
                                     //sum
@@ -196,25 +195,23 @@ public class Driver {
                 )
                 .flatMap(s -> Arrays.asList(s.split("\t")).iterator())
                 //filter rows with amount > 0
-                .filter(s -> s.split(",").length == 4)
-                ;
+                .filter(s -> s.split(",").length == 4);
 
 
         //convert to pair rdd
         JavaRDD<BidItem> explodedCustomRdd =
                 _tmpBids
-                .map( s->  {
-                    String[] array = s.split(",");
+                        .map(s -> {
+                            String[] array = s.split(",");
 
-                    String date = array[1];
-                    String motelId = array[0];
-                    String loSa = array[2];
-                    Double price = Double.valueOf(array[3]);
+                            String date = array[1];
+                            String motelId = array[0];
+                            String loSa = array[2];
+                            Double price = Double.valueOf(array[3]);
 
-                    return new BidItem(date,motelId,loSa,price);
+                            return new BidItem(date, motelId, loSa, price);
 
-                })
-                ;
+                        });
 
         return explodedCustomRdd;
 
@@ -226,17 +223,17 @@ public class Driver {
         //convert to pair rdd
         JavaRDD<BidConverted> convertedPriceRdd =
                 explodedBidsJoinedWithCurrency
-                .map(s -> {
+                        .map(s -> {
 
-                    Integer motelid = Integer.parseInt(s._2._1.getMotelId());
-                    String date = dateFormatOutput.format(dateFormatInput.parse(s._1));
-                    String country = s._2._1.getLoSa();
-                    Double convertedSum = Double.parseDouble(numberFormat.format(s._2._1.getPrice() * Double.parseDouble(s._2._2)));
+                                    Integer motelid = Integer.parseInt(s._2._1.getMotelId());
+                                    String date = dateFormatOutput.format(dateFormatInput.parse(s._1));
+                                    String country = s._2._1.getLoSa();
+                                    Double convertedSum = Double.parseDouble(numberFormat.format(s._2._1.getPrice() * Double.parseDouble(s._2._2)));
 
-                    return new BidConverted(date,motelid,country,convertedSum);
+                                    return new BidConverted(date, motelid, country, convertedSum);
 
-                }
-                );
+                                }
+                        );
 
         return convertedPriceRdd;
 
@@ -251,7 +248,7 @@ public class Driver {
                     //key = hotelid + date
                     String date = w._1.toString() + "," + w._2._1.getDate();
                     //value = country + price + hotelName
-                    String value = w._2._1.getLoSa() + "," + w._2._1.getPrice() + "," +  w._2._2;
+                    String value = w._2._1.getLoSa() + "," + w._2._1.getPrice() + "," + w._2._2;
 
                     return new Tuple2<>(
                             date,
@@ -266,8 +263,7 @@ public class Driver {
                         String[] array1 = v1.split(",");
                         String[] array2 = v2.split(",");
 
-                        if (Double.parseDouble(array1[1]) > Double.parseDouble(array2[1]))
-                        {
+                        if (Double.parseDouble(array1[1]) > Double.parseDouble(array2[1])) {
                             return array1[0] + "," + array1[1] + "," + array2[2];
                         } else {
                             return array1[0] + "," + array2[1] + "," + array2[2];
@@ -276,23 +272,21 @@ public class Driver {
                 })
                 .map(s -> {
 
-                    //hotelid + date
-                    String[] array1 = s._1.split(",");
-                    String hotelid = array1[0];
-                    String date = array1[1];
+                            //hotelid + date
+                            String[] array1 = s._1.split(",");
+                            String hotelid = array1[0];
+                            String date = array1[1];
 
-                    //losa + price + hotelname
-                    String[] array2 = s._2.split(",");
-                    Double price = Double.parseDouble(array2[1]);
-                    String losa = array2[0];
-                    String hotemname = array2[2];
+                            //losa + price + hotelname
+                            String[] array2 = s._2.split(",");
+                            Double price = Double.parseDouble(array2[1]);
+                            String losa = array2[0];
+                            String hotemname = array2[2];
 
-                    return new EnrichedItem(date,hotelid,losa,price,hotemname);
+                            return new EnrichedItem(date, hotelid, losa, price, hotemname);
 
-                  }
-                )
-
-                ;
+                        }
+                );
     }
 
 
