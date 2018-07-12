@@ -44,9 +44,13 @@ public class Driver {
         //create a schema programmatically
         //read bids from a parquet file
         bidDataFrame = readBidDataPar(sc,"./output/bids.parquet");
+
         //read bids from a sequence file
         //bidDataFrame = readBidDataSeq(sc,"./output/bids.seq");
+
+        //read bids from a text file
         //bidDataFrame = readBidData(sc,"bids.txt");
+
 
         rateDataFrame = readRateData(sc);
         hotelDataFrame = readHotelData(sc);
