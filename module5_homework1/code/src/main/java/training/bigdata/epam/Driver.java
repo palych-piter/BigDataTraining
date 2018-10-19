@@ -7,6 +7,7 @@ import org.apache.spark.sql.expressions.WindowSpec;
 import java.io.FileNotFoundException;
 
 import static org.apache.spark.sql.functions.*;
+
 import static training.bigdata.epam.ConstantsLoader.Constants;
 import static training.bigdata.epam.ExplodeBids.explodeBids;
 import static training.bigdata.epam.ReadBidDataPar.readBidDataPar;
@@ -53,6 +54,17 @@ public class Driver {
 
 
         rateDataFrame = readRateData(sc);
+
+        rateDataFrame.registerTempTable("hiveRateDataFrame");
+        //not recommended since save as a table will materialize the data on disk (need to check)
+        //rateDataFrame.write().saveAsTable("hiveRateDataFrame");
+        sc.sqlContext().cacheTable("hiveRateDataFrame");
+        sc.sparkContext().getPersistentRDDs();
+
+
+
+
+
         hotelDataFrame = readHotelData(sc);
         //use a custom class and reflection
         errorDataFrame = readErrorData(sc,"bids.txt");

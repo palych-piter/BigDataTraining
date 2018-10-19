@@ -34,6 +34,7 @@ public class ReadRateData {
         }
         StructType schema = DataTypes.createStructType(fields);
 
+        //convert to row java rdd
         JavaRDD<Row> rowRDD = bidRDD
                 .map(new Function<String, Row>() {
                     @Override
