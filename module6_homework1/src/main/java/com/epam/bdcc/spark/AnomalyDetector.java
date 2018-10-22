@@ -3,20 +3,35 @@ package com.epam.bdcc.spark;
 import com.epam.bdcc.htm.HTMNetwork;
 import com.epam.bdcc.htm.MonitoringRecord;
 import com.epam.bdcc.htm.ResultState;
+import com.epam.bdcc.kafka.KafkaHelper;
 import com.epam.bdcc.utils.GlobalConstants;
 import com.epam.bdcc.utils.PropertiesLoader;
+import jdk.nashorn.internal.objects.NativeString;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.spark.SparkConf;
+import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.Function3;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.State;
+import org.apache.spark.streaming.api.java.JavaDStream;
+import org.apache.spark.streaming.api.java.JavaInputDStream;
+import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import org.apache.spark.streaming.kafka010.*;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
+import scala.Tuple2;
 
-import java.util.HashMap;
-import java.util.Properties;
+import java.util.*;
+
+import static com.epam.bdcc.utils.PropertiesLoader.getKafkaConsumerProperties;
 
 public class AnomalyDetector implements GlobalConstants {
     /**
@@ -39,9 +54,66 @@ public class AnomalyDetector implements GlobalConstants {
             final String checkpointDir = applicationProperties.getProperty(SPARK_CHECKPOINT_DIR_CONFIG);
             final Duration batchDuration = Duration.apply(Long.parseLong(applicationProperties.getProperty(SPARK_BATCH_DURATION_CONFIG)));
             final Duration checkpointInterval = Duration.apply(Long.parseLong(applicationProperties.getProperty(SPARK_CHECKPOINT_INTERVAL_CONFIG)));
+            final String sampleFolder = applicationProperties.getProperty(GENERATOR_SAMPLE_FILE_CONFIG);
+            final long batchPeriod = Long.parseLong(applicationProperties.getProperty(SPARK_BATCH_DURATION_CONFIG));
+            final String master = applicationProperties.getProperty(MASTER);
 
-            JavaStreamingContext jssc = null;
-            //TODO : Create your pipeline here!!!
+
+            SparkConf conf = new SparkConf().setAppName(appName).setMaster(master);
+
+//            OffsetRange[] offsetRanges = {
+//                    // topic, partition, inclusive starting offset, exclusive ending offset
+//                    OffsetRange.create(rawTopicName, 1, 0, 9)
+//            };
+
+
+            JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
+
+            Set<String> topicsSet = new HashSet<>(Arrays.asList(rawTopicName.split(",")));
+
+            JavaInputDStream<ConsumerRecord<String, MonitoringRecord>> lines = KafkaUtils.createDirectStream(
+                    jssc,
+                    LocationStrategies.PreferConsistent(),
+                    ConsumerStrategies.Subscribe(topicsSet, getKafkaConsumerProperties())
+            );
+
+
+            //Batch case testing
+
+//            OffsetRange[] offsetRanges = {
+//                            // topic, partition, inclusive starting offset, exclusive ending offset
+//                            OffsetRange.create(rawTopicName, 1, 2, 9)
+//                    };
+//
+//
+//            JavaSparkContext sparkContext = new JavaSparkContext(conf);
+//            JavaRDD<ConsumerRecord<String, MonitoringRecord>> rdd = KafkaUtils.createRDD(
+//                    sparkContext,
+//                    getKafkaConsumerProperties(),
+//                    offsetRanges,
+//                    LocationStrategies.PreferConsistent()
+//            );
+//
+//
+//            rdd.foreachPartition(partition -> {
+//                    partition.forEachRemaining( record -> {
+//                        System.out.printf("Testing Record : " + record.value().getDateGMT());
+//                    });
+//            });
+
+
+
+            lines.foreachRDD(rdd -> {
+                OffsetRange[] offsetRanges = ((HasOffsetRanges) rdd.rdd()).offsetRanges();
+                rdd.foreachPartition(partition -> {
+
+                    partition.forEachRemaining( record -> {
+                        System.out.printf("Testing Record : " + record.value().getDateGMT());
+                    });
+
+                });
+
+            });
 
             jssc.start();
             jssc.awaitTermination();

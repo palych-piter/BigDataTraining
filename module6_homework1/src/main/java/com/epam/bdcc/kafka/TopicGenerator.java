@@ -40,11 +40,18 @@ public class TopicGenerator implements GlobalConstants {
             final String appName = applicationProperties.getProperty(SPARK_APP_NAME_CONFIG);
             final String master = applicationProperties.getProperty(MASTER);
             final long batchPeriod = Long.parseLong(applicationProperties.getProperty(SPARK_BATCH_DURATION_CONFIG));
+            final String sparkSerializer = applicationProperties.getProperty(SPARK_INTERNAL_SERIALIZER_CONFIG);
 
             //Read the file (one_device_2015-2017.csv) and push records to Kafka raw topic.
 
             //initialize spark
             SparkConf conf = new SparkConf().setAppName(appName).setMaster(master);
+            //set Kryo serializer
+//            conf.set("spark.serializer", sparkSerializer);
+//            conf.registerKryoClasses((new Class<?>[]{
+//                    Class.forName("com.epam.bdcc.htm.MonitoringRecord")
+//            }));
+
             JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
 
             JavaDStream<String> lines = jssc.textFileStream(sampleFolder);
@@ -86,8 +93,11 @@ public class TopicGenerator implements GlobalConstants {
 //                        monitoringRecord.setAnomaly(Double.valueOf(arrayMonitoringRecord[26]));
 //                        monitoringRecord.setPredictionNext(Double.valueOf(arrayMonitoringRecord[27]));
 
-                        ProducerRecord<String, MonitoringRecord> record = new ProducerRecord<>(topicName, KafkaHelper.getKey(monitoringRecord), monitoringRecord);
-                        producer.send(record);
+                        ProducerRecord<String, MonitoringRecord> record =
+                                new ProducerRecord<>(
+                                        topicName, KafkaHelper.getKey(monitoringRecord), monitoringRecord
+                                );
+                                producer.send(record);
 
                     });
                 });
@@ -95,8 +105,6 @@ public class TopicGenerator implements GlobalConstants {
 
             jssc.start();
             jssc.awaitTermination();
-
-            //throw new UnsupportedOperationException("Read the file (one_device_2015-2017.csv) and push records to Kafka raw topic.");
 
         }
     }

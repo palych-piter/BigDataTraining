@@ -7,6 +7,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.util.Map;
 
 public class KafkaJsonMonitoringRecordSerDe implements Deserializer<MonitoringRecord>, Serializer<MonitoringRecord> {
@@ -20,15 +21,38 @@ public class KafkaJsonMonitoringRecordSerDe implements Deserializer<MonitoringRe
 
     @Override
     public byte[] serialize(String topic, MonitoringRecord data) {
-        //TODO : Add implementation for serialization
-        //throw new UnsupportedOperationException("Add implementation for serialization");
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(data);
+            oos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return  bos.toByteArray();
+
     }
 
     @Override
-    public MonitoringRecord deserialize(String topic, byte[] data) {
-        MonitoringRecord record = null;
-        //TODO : Add implementation for deserialization
-        throw new UnsupportedOperationException("Add implementation for deserialization");
+    public MonitoringRecord deserialize(String topic, byte[] data)  {
+
+        MonitoringRecord deserializedMonitoringRecord = new MonitoringRecord();
+
+        ByteArrayInputStream in = new ByteArrayInputStream(data);
+        try {
+            ObjectInputStream is = new ObjectInputStream(in);
+            deserializedMonitoringRecord = (MonitoringRecord) is.readObject();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return deserializedMonitoringRecord;
+
     }
 
     @Override

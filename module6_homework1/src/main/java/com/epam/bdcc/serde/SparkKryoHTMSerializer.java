@@ -30,7 +30,11 @@ public class SparkKryoHTMSerializer<T> extends Serializer<T> {
     @Override
     public void write(Kryo kryo, Output kryoOutput, T t) {
         HTMObjectOutput writer = null;
+
         //TODO : Add implementation for serialization
+//        Kryo kryo = new Kryo();
+//        kryo.writeClassAndObject(output, someObject);
+
         throw new UnsupportedOperationException("Add implementation for serialization");
     }
 

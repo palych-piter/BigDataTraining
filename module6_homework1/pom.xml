@@ -105,7 +105,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.epam.bdcc.spark.AnomalyDetector</mainClass>
+                            <mainClass>com.epam.bdcc.kafka.TopicGenerator</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
