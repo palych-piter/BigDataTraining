@@ -17,13 +17,12 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.Function3;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.State;
-import org.apache.spark.streaming.api.java.JavaDStream;
-import org.apache.spark.streaming.api.java.JavaInputDStream;
-import org.apache.spark.streaming.api.java.JavaPairDStream;
-import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import org.apache.spark.streaming.StateSpec;
+import org.apache.spark.streaming.api.java.*;
 import org.apache.spark.streaming.kafka010.*;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
@@ -68,14 +67,34 @@ public class AnomalyDetector implements GlobalConstants {
 
 
             JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
+            //set checkpoit directory
+            jssc.checkpoint(checkpointDir);
 
             Set<String> topicsSet = new HashSet<>(Arrays.asList(rawTopicName.split(",")));
 
-            JavaInputDStream<ConsumerRecord<String, MonitoringRecord>> lines = KafkaUtils.createDirectStream(
+            JavaDStream<ConsumerRecord<String, MonitoringRecord>> lines = KafkaUtils.createDirectStream(
                     jssc,
                     LocationStrategies.PreferConsistent(),
                     ConsumerStrategies.Subscribe(topicsSet, getKafkaConsumerProperties())
             );
+
+
+            //convert to pair rdd streaming to apply the mapWithState in the next step
+            JavaPairDStream<String, MonitoringRecord> pairLines = lines.mapToPair(
+                    new PairFunction<ConsumerRecord<String, MonitoringRecord>,String,MonitoringRecord> (){
+                        @Override
+                        public Tuple2<String, MonitoringRecord> call(ConsumerRecord<String, MonitoringRecord> s){
+                            return new Tuple2<>(s.key(), s.value()) ;                       }
+            });
+
+
+            //applying a function, detecting anomalies
+            JavaMapWithStateDStream<String, MonitoringRecord, HTMNetwork, MonitoringRecord>
+                    stateLines = pairLines.mapWithState(StateSpec.function(mappingFunc));
+
+
+            //putting into the second topic
+
 
 
             //Batch case testing
@@ -102,18 +121,30 @@ public class AnomalyDetector implements GlobalConstants {
 //            });
 
 
-
-            lines.foreachRDD(rdd -> {
-                OffsetRange[] offsetRanges = ((HasOffsetRanges) rdd.rdd()).offsetRanges();
+            // putting enriched records into the enriched topic
+            stateLines.foreachRDD(rdd -> {
+                //OffsetRange[] offsetRanges = ((HasOffsetRanges) rdd.rdd()).offsetRanges();
+                //KafkaProducer<String, MonitoringRecord> producer = KafkaHelper.createProducer();
                 rdd.foreachPartition(partition -> {
 
+                    KafkaProducer<String, MonitoringRecord> producer = KafkaHelper.createProducer();
+
+                    //record is a Producer Record
                     partition.forEachRemaining( record -> {
-                        System.out.printf("Testing Record : " + record.value().getDateGMT());
+
+                        ProducerRecord<String, MonitoringRecord> monitoringRecord =
+                                new ProducerRecord<>(
+                                        enrichedTopicName, KafkaHelper.getKey(record), record
+                                );
+
+                        producer.send(monitoringRecord);
+
+                        System.out.printf("Testing Record Key: " + record.getDateGMT());
+
                     });
-
                 });
-
             });
+
 
             jssc.start();
             jssc.awaitTermination();
