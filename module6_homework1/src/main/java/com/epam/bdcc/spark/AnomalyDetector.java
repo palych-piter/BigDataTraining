@@ -67,6 +67,7 @@ public class AnomalyDetector implements GlobalConstants {
 
 
             JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
+
             //set checkpoit directory
             jssc.checkpoint(checkpointDir);
 
@@ -94,7 +95,6 @@ public class AnomalyDetector implements GlobalConstants {
 
 
             //putting into the second topic
-
 
 
             //Batch case testing
@@ -137,6 +137,9 @@ public class AnomalyDetector implements GlobalConstants {
                                         enrichedTopicName, KafkaHelper.getKey(record), record
                                 );
 
+
+                        String recordKey = KafkaHelper.getKey(record);
+
                         producer.send(monitoringRecord);
 
                         System.out.printf("Testing Record Key: " + record.getDateGMT());
@@ -144,7 +147,6 @@ public class AnomalyDetector implements GlobalConstants {
                     });
                 });
             });
-
 
             jssc.start();
             jssc.awaitTermination();
