@@ -60,11 +60,6 @@ public class AnomalyDetector implements GlobalConstants {
 
             SparkConf conf = new SparkConf().setAppName(appName).setMaster(master);
 
-//            OffsetRange[] offsetRanges = {
-//                    // topic, partition, inclusive starting offset, exclusive ending offset
-//                    OffsetRange.create(rawTopicName, 1, 0, 9)
-//            };
-
 
             JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
 
@@ -73,6 +68,8 @@ public class AnomalyDetector implements GlobalConstants {
 
             Set<String> topicsSet = new HashSet<>(Arrays.asList(rawTopicName.split(",")));
 
+
+            //initiate the stream
             JavaDStream<ConsumerRecord<String, MonitoringRecord>> lines = KafkaUtils.createDirectStream(
                     jssc,
                     LocationStrategies.PreferConsistent(),
@@ -94,41 +91,10 @@ public class AnomalyDetector implements GlobalConstants {
                     stateLines = pairLines.mapWithState(StateSpec.function(mappingFunc));
 
 
-            //putting into the second topic
-
-
-            //Batch case testing
-
-//            OffsetRange[] offsetRanges = {
-//                            // topic, partition, inclusive starting offset, exclusive ending offset
-//                            OffsetRange.create(rawTopicName, 1, 2, 9)
-//                    };
-//
-//
-//            JavaSparkContext sparkContext = new JavaSparkContext(conf);
-//            JavaRDD<ConsumerRecord<String, MonitoringRecord>> rdd = KafkaUtils.createRDD(
-//                    sparkContext,
-//                    getKafkaConsumerProperties(),
-//                    offsetRanges,
-//                    LocationStrategies.PreferConsistent()
-//            );
-//
-//
-//            rdd.foreachPartition(partition -> {
-//                    partition.forEachRemaining( record -> {
-//                        System.out.printf("Testing Record : " + record.value().getDateGMT());
-//                    });
-//            });
-
-
             // putting enriched records into the enriched topic
             stateLines.foreachRDD(rdd -> {
-                //OffsetRange[] offsetRanges = ((HasOffsetRanges) rdd.rdd()).offsetRanges();
-                //KafkaProducer<String, MonitoringRecord> producer = KafkaHelper.createProducer();
                 rdd.foreachPartition(partition -> {
-
                     KafkaProducer<String, MonitoringRecord> producer = KafkaHelper.createProducer();
-
                     //record is a Producer Record
                     partition.forEachRemaining( record -> {
 
@@ -137,16 +103,23 @@ public class AnomalyDetector implements GlobalConstants {
                                         enrichedTopicName, KafkaHelper.getKey(record), record
                                 );
 
-
                         String recordKey = KafkaHelper.getKey(record);
 
                         producer.send(monitoringRecord);
 
                         System.out.printf("Testing Record Key: " + record.getDateGMT());
 
+//                        State<HTMNetwork> networkState = new State<HTMNetwork>();
+//
+//                        Optional<MonitoringRecord> testMonitoringRecord = Optional.ofNullable(record);
+//                        //MonitoringRecord test = mappingFunc.call("record-key",testMonitoringRecord, networkTest);
+
+
                     });
                 });
             });
+
+
 
             jssc.start();
             jssc.awaitTermination();

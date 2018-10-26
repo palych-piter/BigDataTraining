@@ -46,12 +46,6 @@ public class TopicGenerator implements GlobalConstants {
 
             //initialize spark
             SparkConf conf = new SparkConf().setAppName(appName).setMaster(master);
-            //set Kryo serializer
-//            conf.set("spark.serializer", sparkSerializer);
-//            conf.registerKryoClasses((new Class<?>[]{
-//                    Class.forName("com.epam.bdcc.htm.MonitoringRecord")
-//            }));
-
             JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
 
             JavaDStream<String> lines = jssc.textFileStream(sampleFolder);
@@ -88,10 +82,6 @@ public class TopicGenerator implements GlobalConstants {
                         monitoringRecord.setStateName(arrayMonitoringRecord[21]);
                         monitoringRecord.setCountyName(arrayMonitoringRecord[22]);
                         monitoringRecord.setDateOfLastChange(arrayMonitoringRecord[23]);
-//                        monitoringRecord.setPrediction(Double.valueOf(arrayMonitoringRecord[24]));
-//                        monitoringRecord.setError(Double.valueOf(arrayMonitoringRecord[25]));
-//                        monitoringRecord.setAnomaly(Double.valueOf(arrayMonitoringRecord[26]));
-//                        monitoringRecord.setPredictionNext(Double.valueOf(arrayMonitoringRecord[27]));
 
                         ProducerRecord<String, MonitoringRecord> record =
                                 new ProducerRecord<>(

@@ -16,7 +16,6 @@ public class MonitoringRecordPartitioner extends DefaultPartitioner {
         if (value instanceof MonitoringRecord) {
 
             List partitions = cluster.availablePartitionsForTopic(topic);
-            String monitoringRecordKey = (String) key;
             int partition = Math.abs((((MonitoringRecord) value).getDateGMT() + ((MonitoringRecord) value).getTimeGMT()).toString().hashCode() % partitions.size());
 
             return partition;
