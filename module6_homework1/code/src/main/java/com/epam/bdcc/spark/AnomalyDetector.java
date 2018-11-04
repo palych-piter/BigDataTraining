@@ -102,9 +102,6 @@ public class AnomalyDetector implements GlobalConstants {
                                 );
                         producer.send(monitoringRecord);
 
-                        //String recordKey = KafkaHelper.getKey(record);
-                        //System.out.printf("Testing Record Key: " + record.getDateGMT());
-
                     });
                     // release kafka resources
                     producer.close();

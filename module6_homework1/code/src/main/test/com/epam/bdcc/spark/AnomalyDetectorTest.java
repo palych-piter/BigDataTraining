@@ -35,7 +35,7 @@ class AnomalyDetectorTest extends JavaStreamingSuiteBase implements GlobalConsta
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
 
-        //load a properties file from class path, inside static method
+        //INCOMPLETED: load a properties file from class path, inside static method
         final Properties applicationProperties = PropertiesLoader.getGlobalProperties();
         if (!applicationProperties.isEmpty()) {
             final String appName = applicationProperties.getProperty(SPARK_APP_NAME_CONFIG);
@@ -48,11 +48,7 @@ class AnomalyDetectorTest extends JavaStreamingSuiteBase implements GlobalConsta
             SparkConf conf = new SparkConf().setAppName(appName).setMaster(master);
             jssc = new JavaStreamingContext(conf, new Duration(batchPeriod));
 
-            //set checkpoit directory
-            //jssc.checkpoint(checkpointDir);
-
             Set<String> rawTopicsSet = new HashSet<>(Arrays.asList(rawTopicName.split(",")));
-            //Set<String> rawTopicsSet = new HashSet<>(Arrays.asList(rawTopicName.split(",")));
 
         }
 

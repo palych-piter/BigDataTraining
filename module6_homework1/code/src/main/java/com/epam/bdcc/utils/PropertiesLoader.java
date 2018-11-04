@@ -2,7 +2,6 @@ package com.epam.bdcc.utils;
 
 import com.epam.bdcc.kafka.MonitoringRecordPartitioner;
 import com.epam.bdcc.serde.KafkaJsonMonitoringRecordSerDe;
-import com.epam.bdcc.serde.SparkKryoHTMSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
@@ -40,24 +39,15 @@ public class PropertiesLoader {
                 kafkaProducerProperties.put(LINGER_MS_CONFIG, globalProperties.getProperty(LINGER_MS_CONFIG));
                 kafkaProducerProperties.put(BUFFER_MEMORY_CONFIG, globalProperties.getProperty(BUFFER_MEMORY_CONFIG));
                 kafkaProducerProperties.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-
-                //set Kryo serializer
                 kafkaProducerProperties.put(VALUE_SERIALIZER_CLASS_CONFIG, KafkaJsonMonitoringRecordSerDe.class);
-                //kafkaProducerProperties.put(VALUE_SERIALIZER_CLASS_CONFIG, SparkKryoHTMSerializer.class);
-
                 kafkaProducerProperties.put(PARTITIONER_CLASS_CONFIG, MonitoringRecordPartitioner.class);
-
                 kafkaConsumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, globalProperties.getProperty(BOOTSTRAP_SERVERS_CONFIG));
                 kafkaConsumerProperties.put(GROUP_ID_CONFIG, globalProperties.getProperty(GROUP_ID_CONFIG));
                 kafkaConsumerProperties.put(AUTO_OFFSET_RESET_CONFIG, globalProperties.getProperty(AUTO_OFFSET_RESET_CONFIG));
                 kafkaConsumerProperties.put(ENABLE_AUTO_COMMIT_CONFIG, globalProperties.getProperty(ENABLE_AUTO_COMMIT_CONFIG));
                 kafkaConsumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-                //set Kryo serializer
                 kafkaConsumerProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonMonitoringRecordSerDe.class);
-                //kafkaConsumerProperties.put(VALUE_DESERIALIZER_CLASS_CONFIG, SparkKryoHTMSerializer.class);
-
                 kafkaConsumerProperties.put("auto.offset.reset", "latest");
-
 
             }
         } catch (IOException e) {

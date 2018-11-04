@@ -40,7 +40,6 @@ public class HTMNetwork implements Serializable {
                                 .add(Anomaly.create())
                                 .add(new TemporalMemory())
                                 .add(new SpatialPooler())
-                                // .add(Sensor.create(FileSensor::create, SensorParams.create(SensorParams.Keys::path, "", "input2.csv")))
                                 .add(encoder)
                         ));
     }
@@ -73,9 +72,6 @@ public class HTMNetwork implements Serializable {
 
     private Map<String, Map<String, Object>> getFieldEncodingMap() {
         Map<String, Map<String, Object>> fieldEncodings = setupMap(null, 0, 0, 0.0d, 0.0d, 0.0d, 0.0d, null, null, null, STR_DT, "datetime", "DateEncoder");
-
-        // remove the time of day
-        // fieldEncodings.get("DT").put(Parameters.KEY.DATEFIELD_TOFD.getFieldName(), new Tuple(21, 9.5)); // Time of day
 
         // check if we can safely remove the seazonal factor or play with it
         fieldEncodings.get(STR_DT).put(Parameters.KEY.DATEFIELD_SEASON.getFieldName(), new Tuple(31, 91.5)); // season
@@ -113,16 +109,6 @@ public class HTMNetwork implements Serializable {
         p.set(Parameters.KEY.SYN_PERM_INACTIVE_DEC, 0.0005);
         p.set(Parameters.KEY.MAX_BOOST, 1.0);
 
-        // parameters set by default
-        /* !!! check if this should be set at all
-        p.set(Parameters.KEY.POTENTIAL_RADIUS, 12);
-        p.set(Parameters.KEY.LOCAL_AREA_DENSITY, -1.0);
-        p.set(Parameters.KEY.STIMULUS_THRESHOLD, 1.0);
-        p.set(Parameters.KEY.SYN_PERM_TRIM_THRESHOLD, 0.05);
-        p.set(Parameters.KEY.MIN_PCT_OVERLAP_DUTY_CYCLES, 0.1);
-        p.set(Parameters.KEY.MIN_PCT_ACTIVE_DUTY_CYCLES, 0.1);
-        p.set(Parameters.KEY.DUTY_CYCLE_PERIOD, 10);
-        */
 
         // TEMPORAL MEMORY
         p.set(Parameters.KEY.COLUMN_DIMENSIONS, new int[]{2048});
@@ -135,10 +121,7 @@ public class HTMNetwork implements Serializable {
         p.set(Parameters.KEY.MIN_THRESHOLD, 9);
         p.set(Parameters.KEY.ACTIVATION_THRESHOLD, 12);
 
-        // parameters set by default
-        /* !!! check if they should be set
-        parameters.set(Parameters.KEY.CONNECTED_PERMANENCE, 0.8);
-        */
+
         return p;
     }
 

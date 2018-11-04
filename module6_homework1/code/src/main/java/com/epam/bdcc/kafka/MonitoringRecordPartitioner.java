@@ -22,19 +22,14 @@ public class MonitoringRecordPartitioner extends DefaultPartitioner {
 
             return partition;
 
-            //throw new UnsupportedOperationException("Add implementation for MonitoringRecord Partitioner");
         } else {
             return super.partition(topic, key, keyBytes, value, valueBytes, cluster);
         }
     }
 
     public void close() {
-        //TODO : Add implementation for close, if needed
-        //throw new UnsupportedOperationException("Add implementation for close");
     }
 
     public void configure(Map<String, ?> map) {
-        //TODO : Add implementation for configure, if needed
-        //throw new UnsupportedOperationException("Add implementation for configure");
     }
 }

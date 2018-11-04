@@ -15,8 +15,6 @@ public class KafkaJsonMonitoringRecordSerDe implements Deserializer<MonitoringRe
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        //TODO : Add implementation for configure, if needed
-        //throw new UnsupportedOperationException("Add implementation for configure");
     }
 
     @Override
@@ -61,7 +59,5 @@ public class KafkaJsonMonitoringRecordSerDe implements Deserializer<MonitoringRe
 
     @Override
     public void close() {
-        //TODO : Add implementation for close, if needed
-        //throw new UnsupportedOperationException("Add implementation for close");
     }
 }

@@ -31,16 +31,11 @@ public class TopicGenerator implements GlobalConstants {
         // load a properties file from class path, inside static method
         Properties applicationProperties = PropertiesLoader.getGlobalProperties();
         if (!applicationProperties.isEmpty()) {
-            final boolean skipHeader = Boolean
-                    .parseBoolean(applicationProperties.getProperty(GENERATOR_SKIP_HEADER_CONFIG));
-            final long batchSleep = Long.parseLong(applicationProperties.getProperty(GENERATOR_BATCH_SLEEP_CONFIG));
-            final int batchSize = Integer.parseInt(applicationProperties.getProperty(BATCH_SIZE_CONFIG));
             final String sampleFolder = applicationProperties.getProperty(GENERATOR_SAMPLE_FILE_CONFIG);
             final String topicName = applicationProperties.getProperty(KAFKA_RAW_TOPIC_CONFIG);
             final String appName = applicationProperties.getProperty(SPARK_APP_NAME_CONFIG);
             final String master = applicationProperties.getProperty(MASTER);
             final Duration batchDuration = Duration.apply(Long.parseLong(applicationProperties.getProperty(SPARK_BATCH_DURATION_CONFIG)));
-            final String sparkSerializer = applicationProperties.getProperty(SPARK_INTERNAL_SERIALIZER_CONFIG);
 
 
             //Read the file (one_device_2015-2017.csv) and push records to Kafka raw topic.
@@ -57,33 +52,8 @@ public class TopicGenerator implements GlobalConstants {
                     partition.forEachRemaining(p -> {
 
                         //for each line from a file create a MonitoringRecord object and initialize values
-                        MonitoringRecord monitoringRecord = new MonitoringRecord();
                         String[] arrayMonitoringRecord = p.split(",");
-
-                        monitoringRecord.setStateCode(arrayMonitoringRecord[0]);
-                        monitoringRecord.setCountyCode(arrayMonitoringRecord[1]);
-                        monitoringRecord.setSiteNum(arrayMonitoringRecord[2]);
-                        monitoringRecord.setParameterCode(arrayMonitoringRecord[3]);
-                        monitoringRecord.setPoc(arrayMonitoringRecord[4]);
-                        monitoringRecord.setLatitude(arrayMonitoringRecord[5]);
-                        monitoringRecord.setLongitude(arrayMonitoringRecord[6]);
-                        monitoringRecord.setDatum(arrayMonitoringRecord[7]);
-                        monitoringRecord.setParameterName(arrayMonitoringRecord[8]);
-                        monitoringRecord.setDateLocal(arrayMonitoringRecord[9]);
-                        monitoringRecord.setTimeLocal(arrayMonitoringRecord[10]);
-                        monitoringRecord.setDateGMT(arrayMonitoringRecord[11]);
-                        monitoringRecord.setTimeGMT(arrayMonitoringRecord[12]);
-                        monitoringRecord.setSampleMeasurement(arrayMonitoringRecord[13]);
-                        monitoringRecord.setUnitsOfMeasure(arrayMonitoringRecord[14]);
-                        monitoringRecord.setMdl(arrayMonitoringRecord[15]);
-                        monitoringRecord.setUncertainty(arrayMonitoringRecord[16]);
-                        monitoringRecord.setQualifier(arrayMonitoringRecord[17]);
-                        monitoringRecord.setMethodType(arrayMonitoringRecord[18]);
-                        monitoringRecord.setMethodCode(arrayMonitoringRecord[19]);
-                        monitoringRecord.setMethodName(arrayMonitoringRecord[20]);
-                        monitoringRecord.setStateName(arrayMonitoringRecord[21]);
-                        monitoringRecord.setCountyName(arrayMonitoringRecord[22]);
-                        monitoringRecord.setDateOfLastChange(arrayMonitoringRecord[23]);
+                        MonitoringRecord monitoringRecord = new MonitoringRecord(arrayMonitoringRecord);
 
                         //initialize a producer record to send
                         ProducerRecord<String, MonitoringRecord> record =
@@ -92,6 +62,7 @@ public class TopicGenerator implements GlobalConstants {
                                 );
                         //send the record
                         producer.send(record);
+
                     });
                     // release kafka resources
                     producer.close();
